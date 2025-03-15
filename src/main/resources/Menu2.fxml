@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.shape.Rectangle?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="700.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="MenuHandler">
+   <children>
+      <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#232943" height="700.0" stroke="#191d2f" strokeType="INSIDE" strokeWidth="10.0" width="800.0" />
+      <Button layoutX="40.0" layoutY="285.0" mnemonicParsing="false" onAction="#startVsAI" prefHeight="26.0" prefWidth="150.0" style="-fx-background-color: #a8a8;" text="Play vs Computer" textAlignment="CENTER" textFill="WHITE" underline="true">
+         <font>
+            <Font name="Baghdad Regular" size="13.0" />
+         </font>
+      </Button>
+      <Button layoutX="40.0" layoutY="335.0" mnemonicParsing="false" onAction="#playerVsPlayer" prefHeight="26.0" prefWidth="150.0" style="-fx-background-color: #6A808B;" text="Play vs Player" textAlignment="CENTER" textFill="WHITE" underline="true">
+         <font>
+            <Font name="Baghdad Regular" size="13.0" />
+         </font>
+      </Button>
+      <Button layoutX="40.0" layoutY="385.0" mnemonicParsing="false" onAction="#aIVsAI" prefHeight="26.0" prefWidth="150.0" style="-fx-background-color: #6A808B;" text="AI vs AI" textAlignment="CENTER" textFill="WHITE" underline="true">
+         <font>
+            <Font name="Baghdad Regular" size="13.0" />
+         </font>
+      </Button>
+      <Label layoutX="33.0" layoutY="98.0" prefHeight="61.0" prefWidth="487.0" text="Chess Engine v2" textAlignment="CENTER" textFill="WHITE">
+         <font>
+            <Font name="Corsiva Hebrew" size="56.0" />
+         </font>
+      </Label>
+   </children>
+</AnchorPane>
