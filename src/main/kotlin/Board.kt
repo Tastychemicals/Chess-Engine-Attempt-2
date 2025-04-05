@@ -116,7 +116,7 @@ class Board {
     }
 
     fun addPiece(color: Int, type: Int, squarePosition: Int): Boolean {
-        if (squarePosition in 0.until(BOARD_SIZE) && type != EMPTY){
+        if (squarePosition in 0.until(BOARD_SIZE) && type != EMPTY) {
             return addPiece(Piece(pieceCode(color, type)), squarePosition)
         }
         allTypeBitBoards[type].board shl

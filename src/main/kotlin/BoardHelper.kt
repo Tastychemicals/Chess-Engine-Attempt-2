@@ -25,9 +25,6 @@ class BoardHelper {
             0x5555555555555555UL, 0x3333333333333333UL, 0x0F0F0F0F0F0F0F0FUL, 0x0101010101010101uL
         )
 
-
-
-
         const val WHITE = 0
         const val BLACK = 1
 
@@ -60,9 +57,6 @@ class BoardHelper {
             "ROOK",
             "QUEEN",
             "KING",
-
-
-
         )
         val colorsNames = arrayOf(
             this::WHITE.name,
