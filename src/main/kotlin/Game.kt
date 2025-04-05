@@ -7,7 +7,6 @@ import kotlin.random.nextInt
 
 class Game {
     var board: Board
-
     var turn: Int // 0 = White, 1 = Black
     var player1color: Int
     var player2color: Int
@@ -15,8 +14,8 @@ class Game {
 
 
     constructor() {
-        this.board = Board(this)
-        this.turn = -1
+        board = Board(this)
+        turn = -1
         player1color = 0
         player2color = 0
         isOngoing = false
@@ -32,8 +31,8 @@ class Game {
             1 -> 0
             else -> { endgame() } // this should never happen
         }
-        println("Player 1 color:" + player1color)
-        println("Player 2 color:" + player2color)
+       // println("Player 1 color:" + player1color)
+        //println("Player 2 color:" + player2color)
         board.loadBoard(fen)
         return true
     }

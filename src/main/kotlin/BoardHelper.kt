@@ -5,21 +5,27 @@ import kotlin.math.floor
 import kotlin.random.Random
 
 const val BOARD_SIZE = 64
+const val BOARD_WIDTH = BOARD_SIZE/8
 const val SQUARE_DIMENSION = 67.5
+
+const val EMPTY = 0
+const val PAWN = 1;
+const val KNIGHT = 2;
+const val BISHOP = 3;
+const val ROOK = 4;
+const val QUEEN = 5;
+const val KING = 6;
+
 class BoardHelper {
+
+
     companion object {
 
         private val magicHex = arrayOf(
             0x5555555555555555UL, 0x3333333333333333UL, 0x0F0F0F0F0F0F0F0FUL, 0x0101010101010101uL
         )
 
-        const val EMPTY = 0
-        const val PAWN = 1;
-        const val KNIGHT = 2;
-        const val BISHOP = 3;
-        const val ROOK = 4;
-        const val QUEEN = 5;
-        const val KING = 6;
+
 
 
         const val WHITE = 0
@@ -47,13 +53,13 @@ class BoardHelper {
             )
 
         val typeNames = arrayOf(
-            this::EMPTY.name,
-            this::PAWN.name,
-            this::KNIGHT.name,
-            this::BISHOP.name,
-            this::ROOK.name,
-            this::QUEEN.name,
-            this::KING.name,
+            "EMPTY",
+            "PAWN",
+            "KNIGHT",
+            "BISHOP",
+            "ROOK",
+            "QUEEN",
+            "KING",
 
 
 
@@ -77,7 +83,7 @@ class BoardHelper {
                 }
                 // fenRebuilder.append("/")
             }
-            println(fenRebuilder)
+           // println(fenRebuilder)
             return fenRebuilder.toString()
 
         }
@@ -111,8 +117,6 @@ class BoardHelper {
             return "${colorsNames[color]}  ${typeNames[type]}"
         }
 
-
-
         fun countPieces(p: ULong): Int {
 
             var c = p
@@ -133,7 +137,7 @@ class BoardHelper {
 
         fun convertIntToPairSquare(squareNumber: Int): Pair<Int, Int> {
             val x = (squareNumber % 8)
-            val y = floor((squareNumber.toDouble() / 8.0)).toInt()
+            val y = squareNumber / 8
             return  Pair(x, y)
         }
         /**

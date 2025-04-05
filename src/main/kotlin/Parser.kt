@@ -33,12 +33,12 @@ class Parser {
 
         // Parameters
         val pieceTypes = mapOf(
-            'p' to BoardHelper.PAWN,
-            'n' to BoardHelper.KNIGHT,
-            'b' to BoardHelper.BISHOP,
-            'r' to BoardHelper.ROOK,
-            'q' to BoardHelper.QUEEN,
-            'k' to BoardHelper.KING,
+            'p' to PAWN,
+            'n' to KNIGHT,
+            'b' to BISHOP,
+            'r' to ROOK,
+            'q' to QUEEN,
+            'k' to KING,
         ) // types
         val pieceColors = mapOf(
             'w' to 0,
@@ -107,8 +107,6 @@ class Parser {
         this.logs = null
     }
 
-
-    //todo: fen loader
     fun setLogger(logger: TextArea) {
         this.logs = logger
     }

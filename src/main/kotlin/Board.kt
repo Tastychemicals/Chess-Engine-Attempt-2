@@ -15,12 +15,15 @@ value class Piece(val bitCode: UInt) {
 
     // do pieces get a few extra bits to store their bitboard?
 
-    fun isEmpty(): Boolean {
-        return type == BoardHelper.EMPTY
-    }
-    fun isKing(): Boolean {
-        return type == BoardHelper.KING
-    }
+    fun isEmpty(): Boolean = type == EMPTY
+    fun isPawn(): Boolean = type == PAWN
+    fun isKnight(): Boolean = type == KNIGHT
+    fun isBishop(): Boolean = type == BISHOP
+    fun isRook(): Boolean = type == ROOK
+    fun isQueen(): Boolean = type == QUEEN
+    fun isKing(): Boolean = type == KING
+    fun isLeaper():Boolean = isKing() || isKnight()
+    fun isSlider():Boolean = isBishop() || isRook() || isQueen()
 
     private fun getProperty(selector: UInt, shift: Int): Int {
         return ((bitCode and selector) shr shift).toInt()
@@ -35,22 +38,22 @@ class Board {
     val EMPTY_SQUARE = Piece(pieceCode(0,0))
 
     private val controller: Game
+    public val moveGenerator: MoveGenerator
     private var allTypeBitBoards: Array<BitBoard>
     private var pieces: Array<Piece>
-    private var piecePositions: MutableMap<Int, Piece>
+     var piecePositions: MutableMap<Int, Piece>
+    private var validMoves: HashMap<Int, Set<Int>>
+
     var lastMove: Pair<Int,Int>
 
     constructor(controller: Game) {
+        this.moveGenerator = MoveGenerator(this)
         this.controller = controller // each board object created gets a permanent Game object
         this.allTypeBitBoards = initializeBitboards()
         this.pieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
         this.piecePositions = pieces.withIndex().associate { (square, piece) -> (square to piece) }.toMutableMap()
         this.lastMove = Pair(-1,-1)
-
-
-
-        controller.turn
-       // println(piecePositions)
+        this.validMoves = HashMap<Int, Set<Int>>()
     }
 
     /**
@@ -76,50 +79,12 @@ class Board {
         )
     }
 
-    
-    // FRAGILE FEN CODE. DO NOT TOUCH//todo: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
-    fun loadBoardq(fenString: String) {
-        clearBoard()
-        var skippedSquares = 0
-        val fenBoard = fenString.split("/")
-
-        for (rank in 0..7) {// loop over the 8 layers
-            val fenlayer = fenBoard[rank]
-            println("file: ${rank} , layer: ${fenlayer}")
-            for (file in 0..7) {
-
-                val fenPiece = if (file < fenlayer.length) {
-                    fenlayer[file]
-                } else if (file - skippedSquares in 0..fenlayer.length - 1) {
-                    fenlayer[file - skippedSquares]
-                } else 'e'
-
-
-                // println("fenpiece: ${fenPiece} , layer: ${fenlayer}, idx < layer length: ${file < fenlayer.length}")  //squares beyond length of this iteration are excluded
-                val position = BoardHelper.convertPairToIntSquare(Pair(file, rank))
-                val piece = BoardHelper.getPieceFromFen(fenPiece)
-
-                if (fenPiece.isDigit()) {
-                    pieces[position] = EMPTY_SQUARE
-                    skippedSquares += fenPiece.digitToInt() - 1
-                    println("square skipped at: $position, skipped: $skippedSquares")
-                } else {
-                    pieces[position + skippedSquares] = piece
-                    if (addPiece(piece, position + skippedSquares)) {
-                        println("piece added on square $position")
-                    }
-                    println("piece not added to square $position")
-                    skippedSquares = 0
-                }
-            }
-            skippedSquares = 0
-        }
-    }
-
     fun loadBoard(fenString: String) {
         val digestibleBoard = BoardHelper.simplifyFenBoard(fenString)
         for (square in 0.until(BOARD_SIZE)) {
-            pieces[square] = BoardHelper.getPieceFromFen(digestibleBoard[square])
+            val piece = BoardHelper.getPieceFromFen(digestibleBoard[square])
+            pieces[square] = piece
+            piecePositions[square] = piece
         }
     }
     /**
@@ -151,7 +116,7 @@ class Board {
     }
 
     fun addPiece(color: Int, type: Int, squarePosition: Int): Boolean {
-        if (squarePosition in 0.until(BOARD_SIZE) && type != BoardHelper.EMPTY){
+        if (squarePosition in 0.until(BOARD_SIZE) && type != EMPTY){
             return addPiece(Piece(pieceCode(color, type)), squarePosition)
         }
         allTypeBitBoards[type].board shl
@@ -178,15 +143,26 @@ class Board {
     fun makeMove(origin: Int, endSquare: Int): Boolean {
         if (origin in 0.until(BOARD_SIZE) && endSquare in 0.until(BOARD_SIZE)) {
             val movingPiece = pieces[origin]
-            if (!movingPiece.isEmpty() && origin != endSquare){
-                removePiece(origin)
-                removePiece(endSquare)
-                addPiece(movingPiece, endSquare)
-                lastMove = Pair(origin,endSquare)
+            if (!movingPiece.isEmpty() && origin != endSquare) {
+                if (!movingPiece.isPawn()) {
+                    val validMoves = generateMoves(movingPiece.color)
+                    if (validMoves[origin]?.contains(endSquare) == true ) {
+                        removePiece(origin)
+                        removePiece(endSquare)
+                        addPiece(movingPiece, endSquare)
+                        lastMove = Pair(origin,endSquare)
+                        return true
+                    }
+                } else {
+                    removePiece(origin)
+                    removePiece(endSquare)
+                    addPiece(movingPiece, endSquare)
+                    lastMove = Pair(origin,endSquare)
+                    return true
+                }
+
+
             }
-
-
-            return true
         }
         return false
 
@@ -194,20 +170,26 @@ class Board {
 
     fun tryMove(origin: Int, endSquare: Int) {
         if (controller.turn == getPieceColorFromSquare(origin)) {
-            makeMove(origin,endSquare)
-            controller.changeTurn()
+            if (makeMove(origin,endSquare)) {
+                controller.changeTurn()
+            }
         }
+    }
+
+    fun generateMoves(color: Int): HashMap<Int, Set<Int>> {
+        return moveGenerator.generateAllMoves(color)
+
     }
 
     /**
      * @return an array containing each piece Bit Board.
      */
     fun fetchAllPieces(): Array<Piece> {
-        return pieces
+        return pieces.copyOf()
     }
 
     fun fetchPiece(squarePosition: Int): Piece {
-        if (squarePosition != -1 && squarePosition in 0.rangeTo(BOARD_SIZE)) {
+        if (squarePosition != -1 && squarePosition in 0.until(BOARD_SIZE)) {
             return pieces[squarePosition]
         }
         return EMPTY_SQUARE
@@ -220,9 +202,4 @@ class Board {
 
         return -1
     }
-
-
-
-
-
 }

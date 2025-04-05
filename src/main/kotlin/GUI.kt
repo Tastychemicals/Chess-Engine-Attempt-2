@@ -129,6 +129,7 @@ class GUI : Application() {
             mouseX = e.x - 67.5 / 2
             mouseY = e.y - 67.5 / 2
             clickedSquare = convertPairToIntSquare(adjustForOrientation(getSquareFromPixels(e.x,e.y)))
+            visualizer.addMoveSquareMask(clickedSquare)
 
         }
 
@@ -185,6 +186,7 @@ class GUI : Application() {
             val col = square.first
             val row = square.second
 
+
             // Set square colors
             paintBrush.fill = when ((col + row) % 2) {
                 0 ->  Color.web("#E9D4B4")
@@ -203,7 +205,11 @@ class GUI : Application() {
                 paintBrush.fill = Color.web("#F5E000",0.31)
                 drawSquare(square) //
             }
-            // if (s in
+            // draw movesquares of piece
+            if (s in visualizer.moveSquareMask) {
+                paintBrush.fill = Color.web("#7DAFB5",0.61)
+                drawSquare(square) //
+            }
 
             // draw square numbers
             if (visualizer.showAllSquares) {

@@ -10,6 +10,7 @@ class Visualizer {
     var Filters = mutableSetOf< (Piece) -> Boolean >()
 
     var mask = mutableListOf<Int>()
+    var moveSquareMask = mutableSetOf<Int>()
 
     var showAllSquares: Boolean
     var emptySquareFiltering = true
@@ -68,6 +69,11 @@ class Visualizer {
         println("mask squares:" + mask)
     }
 
+    fun addMoveSquareMask(square: Int): Boolean {
+        moveSquareMask = display.board.moveGenerator.generatePieceMoves(square, display.board.fetchPiece(square))
+        return true
+    }
+
     fun clearCustomMask() {
 
         updateCustomMask()
@@ -84,9 +90,9 @@ class Visualizer {
         //todo: need to add better command parsing to allow manipulation of moveMasks and lastMove masks
     fun setNewOrientation(orientation: Int): Boolean {
        if (orientation != -1) {
-           println("old: " + "$orientation" + " (inside visualizer setNewOrientation)")
+         //  println("old: " + "$orientation" + " (inside visualizer setNewOrientation)")
             this.orientation = orientation
-           println("new: " + "$orientation" + " (inside visualizer setNewOrientation)")
+          // println("new: " + "$orientation" + " (inside visualizer setNewOrientation)")
             return true
        }
             return false
