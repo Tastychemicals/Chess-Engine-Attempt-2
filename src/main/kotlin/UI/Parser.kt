@@ -232,7 +232,7 @@ class Parser {
             val fen = if (text.size > 1) text[1] else NO_PARAM.toString()
             when (text[0]){
                 "turn" -> turnChanged = reference.changeTurn(color)
-                "orient" ->  orientationChanged = visualizer.setNewOrientation(color)
+                "orient" ->  orientationChanged = visualizer.setNewOrientation(1 - color)
                 "squares" -> squareNumsShowing = visualizer.setShowingSquares()
                 "new" ->   newGameStarted = reference.startNewGame()
                 "l" -> if (fen != NO_PARAM.toString()) reference.startNewGame(fen)

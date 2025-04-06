@@ -59,6 +59,7 @@ class Visualizer {
 
     fun updateCustomMask(): Boolean {
         mask.clear()
+        moveSquareMask.clear()
         val pieces = display.board.fetchAllPieces()
 
         for (square in 0.until(BOARD_SIZE)) {

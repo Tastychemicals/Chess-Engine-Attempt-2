@@ -7,34 +7,7 @@ import player.MoveGenerator
 @JvmInline
 value class BitBoard(val board: ULong)
 
-@JvmInline
-value class Piece(val bitCode: UInt) {
 
-    // the lsb of each value needs to be in first place value -> 0 000    // 000000
-    val color get() = getProperty(COLOR_SELECTOR, 3)
-    val type get() = getProperty(TYPE_SELECTOR, 0)
-
-
-    // do pieces get a few extra bits to store their bitboard?
-
-    fun isEmpty(): Boolean = type == EMPTY
-    fun isPawn(): Boolean = type == PAWN
-    fun isKnight(): Boolean = type == KNIGHT
-    fun isBishop(): Boolean = type == BISHOP
-    fun isRook(): Boolean = type == ROOK
-    fun isQueen(): Boolean = type == QUEEN
-    fun isKing(): Boolean = type == KING
-    fun isLeaper():Boolean = isKing() || isKnight()
-    fun isSlider():Boolean = isBishop() || isRook() || isQueen()
-
-    private fun getProperty(selector: UInt, shift: Int): Int {
-        return ((bitCode and selector) shr shift).toInt()
-    }
-
-    override fun toString(): String {
-        return getPieceName(color, type)
-    }
-}
 
 class Board {
     val EMPTY_SQUARE = Piece(pieceCode(0,0))
@@ -107,7 +80,7 @@ class Board {
      * @return true if a piece was added.
      */
     fun addPiece(piece: Piece, square: Int): Boolean {
-        if (square in 0.until(BOARD_SIZE) && !piece.isEmpty()) {
+        if (isInBounds(square) && !piece.isEmpty()) {
             if (pieces[square].isEmpty()) {
                 pieces[square] = piece
                 piecePositions[square] = piece
@@ -118,10 +91,9 @@ class Board {
     }
 
     fun addPiece(color: Int, type: Int, squarePosition: Int): Boolean {
-        if (squarePosition in 0.until(BOARD_SIZE) && type != EMPTY) {
+        if (isInBounds(squarePosition) && type != EMPTY) {
             return addPiece(Piece(pieceCode(color, type)), squarePosition)
         }
-        allTypeBitBoards[type].board shl
         return false
     }
     /**
@@ -143,25 +115,28 @@ class Board {
      */
 
     fun makeMove(origin: Int, endSquare: Int): Boolean {
-        if (origin in 0.until(BOARD_SIZE) && endSquare in 0.until(BOARD_SIZE)) {
+        if (isInBounds(origin) && isInBounds(endSquare)) {
             val movingPiece = pieces[origin]
             if (!movingPiece.isEmpty() && origin != endSquare) {
-                if (!movingPiece.isPawn()) {
+               // if (!movingPiece.isPawn()) {
                     val validMoves = generateMoves(movingPiece.color)
                     if (validMoves[origin]?.contains(endSquare) == true ) {
                         removePiece(origin)
+                        println("moved: " + movingPiece.hasMoved)
                         removePiece(endSquare)
-                        addPiece(movingPiece, endSquare)
+                        addPiece(movingPiece.moveThisPiece(), endSquare)
+                        println(movingPiece.moveThisPiece().hasMoved)
+
                         lastMove = Pair(origin,endSquare)
                         return true
                     }
-                } else {
-                    removePiece(origin)
-                    removePiece(endSquare)
-                    addPiece(movingPiece, endSquare)
-                    lastMove = Pair(origin,endSquare)
-                    return true
-                }
+//                } else {
+//                    removePiece(origin)
+//                    removePiece(endSquare)
+//                    addPiece(movingPiece, endSquare)
+//                    lastMove = Pair(origin,endSquare)
+//                    return true
+//                }
 
 
             }
@@ -191,7 +166,7 @@ class Board {
     }
 
     fun fetchPiece(squarePosition: Int): Piece {
-        if (squarePosition != -1 && squarePosition in 0.until(BOARD_SIZE)) {
+        if (squarePosition != -1 && isInBounds(squarePosition)) {
             return pieces[squarePosition]
         }
         return EMPTY_SQUARE
@@ -204,4 +179,6 @@ class Board {
 
         return -1
     }
+
+    fun isInBounds(square: Int): Boolean = square in 0.until(BOARD_SIZE)
 }

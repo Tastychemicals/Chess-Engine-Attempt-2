@@ -19,8 +19,10 @@ const val KING = 6;
 const val WHITE = 0
 const val BLACK = 1
 
+const val MOVED_SELECTOR: UInt =    0b0000010000u
 const val COLOR_SELECTOR: UInt =    0b0000001000u
 const val TYPE_SELECTOR: UInt =     0b0000000111u
+
 
 val typeNames = arrayOf(
     "EMPTY",
@@ -46,11 +48,12 @@ fun convertIntToPairSquare(squareNumber: Int): Pair<Int, Int> {
 }
 
 fun pieceCode(color: Int, type: Int): UInt {
-    val bitCode = 0u or convertToBinary(color) shl 3 or convertToBinary(type) //or BoardUtils.convertToBinary(position)shl 3
-    //println(bitCode.toString(2).padStart(4,'0'))
-    // println(Game.Piece(bitCode))
+    val bitCode = 0u shl 1 or                   // hasMoved : 4 bits deep
+            convertToBinary(color) shl 3 or     // color    : 3 bits deep
+            convertToBinary(type)               // type     : 1 bit deep
     return bitCode
 }
+
 
 fun convertToBinary(number: Int): UInt {
 

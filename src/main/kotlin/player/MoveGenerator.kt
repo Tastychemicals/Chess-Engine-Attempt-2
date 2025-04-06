@@ -7,16 +7,17 @@ import kotlin.math.abs
 
 class MoveGenerator(board: Board) {
     private var referenceBoard = board
-
+    private val pawnMoveInfo = MovementInfo(7, 9, 8, 16, pieceType = PAWN)
     private val knightMoveInfo = MovementInfo(17,10, 6, 15, pieceType = KNIGHT)
     private val bishopMoveInfo = MovementInfo(7,9, pieceType = BISHOP)
     private val rookMoveInfo = MovementInfo(1,8, pieceType = ROOK)
     private val queenMoveInfo = MovementInfo(1,8,7,9, pieceType = QUEEN)
     private val kingMoveInfo = MovementInfo(1,8,7,9, pieceType = KING)
+    private val noMoveInfo = MovementInfo(pieceType = EMPTY)
 
     fun generateAllMoves(color: Int): HashMap<Int,Set<Int>> {
         val allMoves = HashMap<Int,Set<Int>>()
-        val squaresAndPieces = referenceBoard.piecePositions.filter { it.value.color == Companion.colors[color] && !it.value.isEmpty() }
+        val squaresAndPieces = referenceBoard.piecePositions.filter { it.value.color == color && !it.value.isEmpty() }
         for (squareAndPiece in squaresAndPieces) {
             val piece = squareAndPiece.value
             val square = squareAndPiece.key
@@ -67,52 +68,74 @@ class MoveGenerator(board: Board) {
 
     private fun getMovementInfo(pieceType: Int): MovementInfo {
        return when (pieceType) {
+           PAWN -> pawnMoveInfo
            KNIGHT -> knightMoveInfo
            BISHOP -> bishopMoveInfo
            ROOK -> rookMoveInfo
            QUEEN -> queenMoveInfo
            KING -> kingMoveInfo
-           else -> rookMoveInfo
+           else -> noMoveInfo
         }
     }
 
     private fun crawl(startSquare: Int, piece: Piece, truePiece: Piece): MutableSet<Int> {
         val moveInfo = getMovementInfo(piece.type)
         val foundMoves = mutableSetOf<Int>()
-        for (d in 0..1) {
-            for (vector in moveInfo.getVectors()) {
-                val direction = when (d) {
-                    0 -> 1 * vector
-                    1 -> -1 * vector
-                    else -> 0
-                }
-                for (distance in 1..BOARD_WIDTH) {
-                    val newSquare = startSquare + (distance * direction)
-                    val pastSquare = startSquare + ((distance - 1) * direction)
-                    
-                    //pieces cannot wrap around the board
-                    if (leaperAndWrapsAround(piece, startSquare, newSquare)
-                        || sliderAndWrapsAround(piece, startSquare, newSquare, pastSquare)) break
-                    
-                    //pieces can capture enemies
-                    if (collisionIsCapture(newSquare, truePiece.color)) {
+        if (piece.isPawn()) {
+            var canJump = false
+            for(vector in moveInfo.getVectors()) {
+                val newSquare = startSquare + (vector * getPawnDirection(piece.color))
+
+                if (isDiagonalVector(vector) && isValidPawnCapture(piece, startSquare, newSquare)) {
                         foundMoves.add(newSquare)
-                        break
+                }
+
+                if (isForwardVector(vector) && isEmptySquare(newSquare)) {
+                    if (rowDistance(startSquare, newSquare) == 1) {
+                        canJump = true
+                        foundMoves.add(newSquare)
                     } else {
-                      // pieces can move to empty squares
-                        if (referenceBoard.fetchPiece(newSquare).isEmpty()) foundMoves.add(newSquare) else break
+                        if (canJump && !piece.hasMoved) {
+                            foundMoves.add(newSquare)
+                        }
                     }
-
-                    //kings and knights have a depth of 1
-                    if (piece.isLeaper() || truePiece.isLeaper()) break
-
-
 
                 }
             }
 
+        } else {
+            for (d in 0..1) {
+                for (vector in moveInfo.getVectors()) {
+                    val direction = when (d) {
+                        0 -> 1 * vector
+                        1 -> -1 * vector
+                        else -> 0
+                    }
+                    for (distance in 1..BOARD_WIDTH) {
+                        val newSquare = startSquare + (distance * direction)
+                        val pastSquare = startSquare + ((distance - 1) * direction)
+
+                        //pieces cannot wrap around the board
+                        if (leaperAndWrapsAround(piece, startSquare, newSquare)
+                            || sliderAndWrapsAround(piece, startSquare, newSquare, pastSquare)) break
+
+                        //pieces can capture enemies
+                        if (collisionIsCapture(newSquare, truePiece.color)) {
+                            foundMoves.add(newSquare)
+                            break
+                        } else {
+                            // pieces can move to empty squares
+                            if (isEmptySquare(newSquare)) foundMoves.add(newSquare) else break
+                        }
+
+                        //kings and knights have a depth of 1
+                        if (piece.isLeaper() || truePiece.isLeaper()) break
 
 
+
+                    }
+                }
+            }
         }
         return foundMoves
     }
@@ -132,12 +155,29 @@ class MoveGenerator(board: Board) {
         }
         return false
     }
+    private fun isValidPawnCapture(piece: Piece, origin: Int, endSquare: Int): Boolean {
+        return collisionIsCapture(endSquare, piece.color)
+                && !doesCrawlerWrap(origin, endSquare)
+    }
+   // isValidPawn
+
+    private fun getPawnDirection(color: Int): Int = when (color) {
+        1 -> 1
+        else -> -1
+    }
 
     private fun isOnEdge(square: Int): Boolean = (square % 8 == 0 || square % 8 == 7)
-    private fun isOnDiffCol(origin: Int, endSquare: Int): Boolean =
-        convertIntToPairSquare(origin).first != convertIntToPairSquare(endSquare).first
-    private fun isOnDiffRow(origin: Int, endSquare: Int): Boolean =
-        convertIntToPairSquare(origin).second != convertIntToPairSquare(endSquare).second
+    private fun isDiagonalVector(vector: Int): Boolean {
+        return abs(vector) == 7 || abs(vector) == 9
+    }
+    private fun isForwardVector(vector: Int): Boolean {
+        return abs(vector) % BOARD_WIDTH == 0;
+    }
+
+    private fun isEmptySquare(square: Int): Boolean {
+        return referenceBoard.fetchPiece(square).isEmpty()
+    }
+
 
     private fun colDistance(origin: Int, endSquare: Int): Int =
         abs(convertIntToPairSquare(origin).first - convertIntToPairSquare(endSquare).first)
