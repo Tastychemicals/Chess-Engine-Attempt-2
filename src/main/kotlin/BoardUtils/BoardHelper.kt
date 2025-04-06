@@ -2,6 +2,7 @@ package BoardUtils
 import Game.Piece
 import UI.Parser.Companion.pieceColors
 import UI.Parser.Companion.pieceTypes
+import kotlin.math.abs
 import kotlin.random.Random
 
 const val BOARD_SIZE = 64
@@ -45,6 +46,35 @@ fun convertIntToPairSquare(squareNumber: Int): Pair<Int, Int> {
     val x = (squareNumber % 8)
     val y = squareNumber / 8
     return  Pair(x, y)
+}
+
+fun colDistance(origin: Int, endSquare: Int): Int =
+    abs(convertIntToPairSquare(origin).first - convertIntToPairSquare(endSquare).first)
+fun rowDistance(origin: Int, endSquare: Int): Int =
+    abs(convertIntToPairSquare(origin).second - convertIntToPairSquare(endSquare).second)
+
+fun isOnDiffRow(origin: Int, endSquare: Int): Boolean {
+    return rowDistance(origin, endSquare) != 0
+}
+fun isOnDiffCol(origin: Int, endSquare: Int): Boolean {
+    return colDistance(origin, endSquare) != 0
+}
+
+fun getSquareBehind(squarePosition: Int, color: Int): Int {
+    return squarePosition + (8 * getPawnDirection(getOppositeColor(color)))
+}
+
+
+fun getOppositeColor(color: Int): Int {
+   return when (color) {
+        0 -> 1
+        else -> 0
+    }
+}
+
+ fun getPawnDirection(color: Int): Int = when (color) {
+    1 -> 1
+    else -> -1
 }
 
 fun pieceCode(color: Int, type: Int): UInt {
@@ -109,6 +139,8 @@ fun getRandomPiece(): Piece {
         ) // for excluding empty squares)
     )
 }
+
+
 
 val colorsNames = arrayOf(
     "WHITE",

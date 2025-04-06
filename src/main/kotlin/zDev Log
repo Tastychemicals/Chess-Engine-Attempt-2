@@ -21,7 +21,10 @@
         - Square numbers not rendering properly
         - black and white now load at their correct orientations (instead of at the opposite color's)
 
-
+4/5/25 11:23 PM -
+    added:
+        - Pseudo-legal movegen for all pieces, including enpassant
+        - changed filestructures
 
 
 

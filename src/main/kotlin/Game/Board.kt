@@ -11,6 +11,7 @@ value class BitBoard(val board: ULong)
 
 class Board {
     val EMPTY_SQUARE = Piece(pieceCode(0,0))
+    private var enpassantSquare: Int?
 
     private val controller: Game
     public val moveGenerator: MoveGenerator
@@ -29,6 +30,7 @@ class Board {
         this.piecePositions = pieces.withIndex().associate { (square, piece) -> (square to piece) }.toMutableMap()
         this.lastMove = Pair(-1,-1)
         this.validMoves = HashMap<Int, Set<Int>>()
+        enpassantSquare = null
     }
 
     /**
@@ -118,31 +120,42 @@ class Board {
         if (isInBounds(origin) && isInBounds(endSquare)) {
             val movingPiece = pieces[origin]
             if (!movingPiece.isEmpty() && origin != endSquare) {
-               // if (!movingPiece.isPawn()) {
                     val validMoves = generateMoves(movingPiece.color)
                     if (validMoves[origin]?.contains(endSquare) == true ) {
                         removePiece(origin)
-                        println("moved: " + movingPiece.hasMoved)
-                        removePiece(endSquare)
+                        if (isEnpassantMove(movingPiece, origin, endSquare)) {
+                            removePiece(getSquareBehind(endSquare, movingPiece.color))
+                        } else removePiece(endSquare)
+
                         addPiece(movingPiece.moveThisPiece(), endSquare)
-                        println(movingPiece.moveThisPiece().hasMoved)
+
+                        updateEnpassantSquare(origin, endSquare, movingPiece)
+                        println(enpassantSquare)
 
                         lastMove = Pair(origin,endSquare)
                         return true
                     }
-//                } else {
-//                    removePiece(origin)
-//                    removePiece(endSquare)
-//                    addPiece(movingPiece, endSquare)
-//                    lastMove = Pair(origin,endSquare)
-//                    return true
-//                }
-
-
             }
         }
         return false
 
+    }
+    private fun updateEnpassantSquare(origin: Int, endSquare: Int, piece: Piece) {
+        enpassantSquare = if (rowDistance(origin, endSquare) == 2 && piece.isPawn()) {
+            endSquare
+        } else {
+            null
+        }
+    }
+    private fun isEnpassantMove(piece: Piece, origin: Int, endSquare: Int): Boolean {
+        return piece.isPawn()
+                && isOnDiffRow(origin, endSquare)
+                && isOnDiffCol(origin, endSquare)
+                && fetchPiece(endSquare).isEmpty()
+    }
+
+    fun fetchEnpassantSquare(): Int? {
+        return enpassantSquare
     }
 
     fun tryMove(origin: Int, endSquare: Int) {
@@ -155,7 +168,6 @@ class Board {
 
     fun generateMoves(color: Int): HashMap<Int, Set<Int>> {
         return moveGenerator.generateAllMoves(color)
-
     }
 
     /**
@@ -166,7 +178,7 @@ class Board {
     }
 
     fun fetchPiece(squarePosition: Int): Piece {
-        if (squarePosition != -1 && isInBounds(squarePosition)) {
+        if (isInBounds(squarePosition)) {
             return pieces[squarePosition]
         }
         return EMPTY_SQUARE

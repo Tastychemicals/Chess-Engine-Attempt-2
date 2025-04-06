@@ -86,7 +86,7 @@ class MoveGenerator(board: Board) {
             for(vector in moveInfo.getVectors()) {
                 val newSquare = startSquare + (vector * getPawnDirection(piece.color))
 
-                if (isDiagonalVector(vector) && isValidPawnCapture(piece, startSquare, newSquare)) {
+                if (isDiagonalVector(vector) && (isValidPawnCapture(piece, startSquare, newSquare) || isEnpassantCapture(newSquare, piece.color) )) {
                         foundMoves.add(newSquare)
                 }
 
@@ -99,7 +99,6 @@ class MoveGenerator(board: Board) {
                             foundMoves.add(newSquare)
                         }
                     }
-
                 }
             }
 
@@ -130,9 +129,6 @@ class MoveGenerator(board: Board) {
 
                         //kings and knights have a depth of 1
                         if (piece.isLeaper() || truePiece.isLeaper()) break
-
-
-
                     }
                 }
             }
@@ -148,6 +144,7 @@ class MoveGenerator(board: Board) {
     private fun sliderAndWrapsAround(piece: Piece, origin: Int, endSquare: Int, pastSquare: Int): Boolean =
         piece.isSlider() && (isOnEdge(origin) && isOnEdge(endSquare) && doesCrawlerWrap(pastSquare, endSquare)
                 || !isOnEdge(origin) && isOnEdge(endSquare) && isOnEdge(pastSquare))
+
     private fun collisionIsCapture(square: Int, color: Int): Boolean {
         val collisionSquare = referenceBoard.fetchPiece(square)
         if (!collisionSquare.isEmpty()) {
@@ -159,12 +156,10 @@ class MoveGenerator(board: Board) {
         return collisionIsCapture(endSquare, piece.color)
                 && !doesCrawlerWrap(origin, endSquare)
     }
-   // isValidPawn
-
-    private fun getPawnDirection(color: Int): Int = when (color) {
-        1 -> 1
-        else -> -1
+    private fun isEnpassantCapture(square: Int, color: Int): Boolean {
+        return getSquareBehind(square, color) == referenceBoard.fetchEnpassantSquare()
     }
+
 
     private fun isOnEdge(square: Int): Boolean = (square % 8 == 0 || square % 8 == 7)
     private fun isDiagonalVector(vector: Int): Boolean {
@@ -179,10 +174,7 @@ class MoveGenerator(board: Board) {
     }
 
 
-    private fun colDistance(origin: Int, endSquare: Int): Int =
-        abs(convertIntToPairSquare(origin).first - convertIntToPairSquare(endSquare).first)
-    private fun rowDistance(origin: Int, endSquare: Int): Int =
-        abs(convertIntToPairSquare(origin).second - convertIntToPairSquare(endSquare).second)
+
 
     private fun isInBounds(square: Int): Boolean {
         return !(square > BOARD_SIZE || square < 0)
