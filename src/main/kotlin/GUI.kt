@@ -1,4 +1,3 @@
-import javafx.animation.AnimationTimer
 import javafx.application.Application
 import javafx.application.Platform
 import javafx.event.ActionEvent
@@ -17,12 +16,14 @@ import javafx.stage.Stage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import BoardHelper.Companion.convertIntToPairSquare
-import BoardHelper.Companion.convertPairToIntSquare
-import BoardHelper.Companion.convertIntSquareToBit
+import BoardUtils.*
+import Game.Game
+import Game.Piece
+import UI.Parser
+import UI.Visualizer
+import javafx.animation.AnimationTimer
 import javafx.scene.input.KeyCode
-import kotlin.random.Random
-
+import javafx.scene.text.Font
 
 
 class GUI : Application() {
@@ -41,7 +42,7 @@ class GUI : Application() {
     @FXML
     private  lateinit var log: TextArea
 
-    var game = Game() // this will be the main visual game
+    var game = Game() // this will be the .main visual game
     var visualizer = Visualizer(game) // for extra rendering
     var parser = Parser(game, visualizer) // for extra manipulation of game and visualizer
     var clickedSquare = -1
@@ -219,10 +220,10 @@ class GUI : Application() {
                     0 ->  Color.web("#D5AB6D")
                     else ->  Color.web("#E9D4B4")
                 }
-                paintBrush.font = javafx.scene.text.Font(20.0)
+                paintBrush.font = Font(20.0)
                 val newpos = adjustForOrientation(Pair(col,row))
                 paintBrush.fillText("$s", (newpos.first * SQUARE_DIMENSION + 0.5 * SQUARE_DIMENSION) - 10.0, ((newpos.second * SQUARE_DIMENSION + 0.5 * SQUARE_DIMENSION)) + 10.0)
-               // paintBrush.fillText("$s", ((col * SQUARE_DIMENSION + 0.5 * SQUARE_DIMENSION) - 10.0), ((row * SQUARE_DIMENSION + 0.5 * SQUARE_DIMENSION)) + 10.0)
+               // paintBrush.fillText("$s", ((col * .BoardUtils.SQUARE_DIMENSION + 0.5 * .BoardUtils.SQUARE_DIMENSION) - 10.0), ((row * .BoardUtils.SQUARE_DIMENSION + 0.5 * .BoardUtils.SQUARE_DIMENSION)) + 10.0)
 
             }
 

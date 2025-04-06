@@ -1,6 +1,12 @@
+package UI
+
+import BoardUtils.BOARD_SIZE
+import Game.Game
+import Game.Piece
+
 class Visualizer {
     /**
-     * ------- Class used explicitly by the GUI --------
+     * ------- Class used explicitly by the .GUI --------
      */
     var lastMoveMask: Pair<Int,Int>
 

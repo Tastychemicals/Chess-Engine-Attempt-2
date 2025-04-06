@@ -1,6 +1,9 @@
+package player
+import BoardUtils.*
+import Game.Board
+import BoardUtils.BoardHelper.*
+import Game.Piece
 import kotlin.math.abs
-
-typealias moveConstraint = (Int, Int) -> Boolean
 
 class MoveGenerator(board: Board) {
     private var referenceBoard = board
@@ -13,27 +16,24 @@ class MoveGenerator(board: Board) {
 
     fun generateAllMoves(color: Int): HashMap<Int,Set<Int>> {
         val allMoves = HashMap<Int,Set<Int>>()
-        val squaresAndPieces = referenceBoard.piecePositions.filter { it.value.color == BoardHelper.colors[color] && !it.value.isEmpty() }
+        val squaresAndPieces = referenceBoard.piecePositions.filter { it.value.color == Companion.colors[color] && !it.value.isEmpty() }
         for (squareAndPiece in squaresAndPieces) {
-            allMoves.put(squareAndPiece.key, generatePieceMoves(squareAndPiece))
+            val piece = squareAndPiece.value
+            val square = squareAndPiece.key
+            allMoves.put(squareAndPiece.key, generatePieceMoves(square, piece))
         }
         return allMoves
     }
 
     fun generatePieceMoves(square: Int, piece: Piece): MutableSet<Int> {
-        if(piece.isQueen() || piece.isKing()) {
-            val moves = crawl(square, Piece(BoardHelper.pieceCode(piece.color, ROOK)), piece)
-            moves.addAll(crawl(square, Piece(BoardHelper.pieceCode(piece.color, BISHOP)), piece))
+        if (piece.isQueen() || piece.isKing()) {
+            val moves = crawl(square, Piece(pieceCode(piece.color, ROOK)), piece)
+            moves.addAll(crawl(square, Piece(pieceCode(piece.color, BISHOP)), piece))
             return moves
         }
         return crawl(square, piece, piece)
     }
 
-    private fun generatePieceMoves(squareAndPiece: Map.Entry<Int, Piece>): MutableSet<Int> { // Piece? ...color..position..type
-        val piece = squareAndPiece.value
-        val square = squareAndPiece.key
-        return generatePieceMoves(square, piece)
-    }
 
     fun perft() {
 
@@ -50,9 +50,6 @@ class MoveGenerator(board: Board) {
     fun setReferenceBoard(board: Board) {
         referenceBoard = board
     }
-
-
-
 
 
 
@@ -138,14 +135,14 @@ class MoveGenerator(board: Board) {
 
     private fun isOnEdge(square: Int): Boolean = (square % 8 == 0 || square % 8 == 7)
     private fun isOnDiffCol(origin: Int, endSquare: Int): Boolean =
-        BoardHelper.convertIntToPairSquare(origin).first != BoardHelper.convertIntToPairSquare(endSquare).first
+        convertIntToPairSquare(origin).first != convertIntToPairSquare(endSquare).first
     private fun isOnDiffRow(origin: Int, endSquare: Int): Boolean =
-        BoardHelper.convertIntToPairSquare(origin).second != BoardHelper.convertIntToPairSquare(endSquare).second
+        convertIntToPairSquare(origin).second != convertIntToPairSquare(endSquare).second
 
     private fun colDistance(origin: Int, endSquare: Int): Int =
-        abs(BoardHelper.convertIntToPairSquare(origin).first - BoardHelper.convertIntToPairSquare(endSquare).first)
+        abs(convertIntToPairSquare(origin).first - convertIntToPairSquare(endSquare).first)
     private fun rowDistance(origin: Int, endSquare: Int): Int =
-        abs(BoardHelper.convertIntToPairSquare(origin).second - BoardHelper.convertIntToPairSquare(endSquare).second)
+        abs(convertIntToPairSquare(origin).second - convertIntToPairSquare(endSquare).second)
 
     private fun isInBounds(square: Int): Boolean {
         return !(square > BOARD_SIZE || square < 0)
@@ -156,5 +153,5 @@ class MoveGenerator(board: Board) {
 
 
     // todo: fix board rendering and update structures to use pieces and bit boards
-    // todo: implement the pieceCode encoder
+    // todo: implement the BoardUtils.pieceCode encoder
 }

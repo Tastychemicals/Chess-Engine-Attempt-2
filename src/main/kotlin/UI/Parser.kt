@@ -1,10 +1,17 @@
+package UI
+
+import BoardUtils.BISHOP
+import BoardUtils.BOARD_SIZE
+import BoardUtils.BoardHelper
+import Game.Game
+import BoardUtils.*
+import BoardUtils.convertPairToIntSquare
 import javafx.scene.control.TextArea
-import kotlin.coroutines.CoroutineContext
 import kotlin.random.Random
 
 class Parser {
     /**
-     * ------- Class used explicitly by the GUI --------
+     * ------- Class used explicitly by the .GUI --------
      */
     companion object {
         // Operations
@@ -137,8 +144,8 @@ class Parser {
     fun beginParseForBoard(text: List<String>) {
         if (text[0] in boardOperations && text.size < 5) {
 
-            val position1Param = if (text.size > 1) BoardHelper.convertPairToIntSquare(parsePosition(text[1])) else -1
-            val randomPiece = BoardHelper.getRandomPiece()
+            val position1Param = if (text.size > 1) convertPairToIntSquare(parsePosition(text[1])) else -1
+            val randomPiece = getRandomPiece()
             val randomPosition = Random.nextInt(BOARD_SIZE)
 
 
@@ -154,10 +161,10 @@ class Parser {
             log(
                 when {
                     pieceRemoved -> ("Emptied square: ${text[1]}")
-                    boardCleared -> ("Board cleared")
+                    boardCleared -> ("Game.Board cleared")
                     randomPlaced -> ("Placed randomly: " +
-                            BoardHelper.getPieceName(randomPiece.color, randomPiece.type) + "\n" +
-                            "at ${BoardHelper.convertIntToPairSquare(randomPosition)}")
+                            getPieceName(randomPiece.color, randomPiece.type) + "\n" +
+                            "at ${convertIntToPairSquare(randomPosition)}")
 
                     else -> isCommandFail(text[0])
                 }
@@ -170,7 +177,7 @@ class Parser {
     fun boardParseTwoParameters(text: List<String>, passedParam: Int ) {
         val typeParam = if (text.size > 1)  parseType(text[1]) else -1
         val colorParam = if (text.size > 1)  parseColor(text[1]) else -1
-        val position2param = if (text.size > 2) BoardHelper.convertPairToIntSquare(parsePosition(text[2])) else -1
+        val position2param = if (text.size > 2) convertPairToIntSquare(parsePosition(text[2])) else -1
 
         when (text[0]) {
             "p" -> piecePlaced = reference.board.addPiece(colorParam, typeParam, position2param)
@@ -179,7 +186,7 @@ class Parser {
         }
 
         keyComments += when {
-            piecePlaced -> if (typeParam != -1) {("Placed ${BoardHelper.typeNames[typeParam]} at ${text[2]}")} else ""
+            piecePlaced -> if (typeParam != -1) {("Placed ${typeNames[typeParam]} at ${text[2]}")} else ""
             pieceMoved -> ("Moved piece from ${text[1]} to ${text[2]}\n" +
                     "actual: ${parsePosition(text[1])} -> ${parsePosition(text[2])}" )
             else -> isCommandFail(text[0])
@@ -207,8 +214,8 @@ class Parser {
             }
             log(
                 when {
-                    pieceMaskAdded -> ("Added mask: ${BoardHelper.getPieceName(color2Param, pieceParam)}\n")
-                    colorMaskAdded -> ("Added mask: ${BoardHelper.colorsNames[colorParam]}")
+                    pieceMaskAdded -> ("Added mask: ${getPieceName(color2Param, pieceParam)}\n")
+                    colorMaskAdded -> ("Added mask: ${colorsNames[colorParam]}")
                     allMaskCleared -> ("All masks cleared ")
                     else -> isCommandFail(text[0])
                 }
@@ -234,8 +241,8 @@ class Parser {
 
             log(
                 when {
-                    turnChanged -> ("Turn changed to: ${BoardHelper.colors[color]}")
-                    orientationChanged -> ("Orientation: ${BoardHelper.colors[color]}")
+                    turnChanged -> ("Turn changed to: $color")
+                    orientationChanged -> ("Orientation: $color")
                     squareNumsShowing -> ("Toggled square numbers")
                     else -> isCommandFail(text[0])
                 }

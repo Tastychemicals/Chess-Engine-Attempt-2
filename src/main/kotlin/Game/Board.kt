@@ -1,5 +1,7 @@
-import BoardHelper.Companion.convertPairToIntSquare
-import BoardHelper.Companion.pieceCode
+package Game
+import BoardUtils.*
+
+import player.MoveGenerator
 
 
 @JvmInline
@@ -9,8 +11,8 @@ value class BitBoard(val board: ULong)
 value class Piece(val bitCode: UInt) {
 
     // the lsb of each value needs to be in first place value -> 0 000    // 000000
-    val color get() = getProperty(BoardHelper.COLOR_SELECTOR, 3)
-    val type get() = getProperty(BoardHelper.TYPE_SELECTOR, 0)
+    val color get() = getProperty(COLOR_SELECTOR, 3)
+    val type get() = getProperty(TYPE_SELECTOR, 0)
 
 
     // do pieces get a few extra bits to store their bitboard?
@@ -30,7 +32,7 @@ value class Piece(val bitCode: UInt) {
     }
 
     override fun toString(): String {
-        return("${BoardHelper.colors[color]} ${BoardHelper.typeNames[type]}")
+        return getPieceName(color, type)
     }
 }
 
@@ -48,7 +50,7 @@ class Board {
 
     constructor(controller: Game) {
         this.moveGenerator = MoveGenerator(this)
-        this.controller = controller // each board object created gets a permanent Game object
+        this.controller = controller // each board object created gets a permanent Game.Game object
         this.allTypeBitBoards = initializeBitboards()
         this.pieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
         this.piecePositions = pieces.withIndex().associate { (square, piece) -> (square to piece) }.toMutableMap()
@@ -80,9 +82,9 @@ class Board {
     }
 
     fun loadBoard(fenString: String) {
-        val digestibleBoard = BoardHelper.simplifyFenBoard(fenString)
+        val digestibleBoard = simplifyFenBoard(fenString)
         for (square in 0.until(BOARD_SIZE)) {
-            val piece = BoardHelper.getPieceFromFen(digestibleBoard[square])
+            val piece = getPieceFromFen(digestibleBoard[square])
             pieces[square] = piece
             piecePositions[square] = piece
         }
@@ -99,7 +101,7 @@ class Board {
         return true
     }
     /**
-     * Places a Piece on the specified bitboard if the
+     * Places a Game.Piece on the specified bitboard if the
      * specified position is empty on the board.
      *
      * @return true if a piece was added.
@@ -182,7 +184,7 @@ class Board {
     }
 
     /**
-     * @return an array containing each piece Bit Board.
+     * @return an array containing each piece Bit Game.Board.
      */
     fun fetchAllPieces(): Array<Piece> {
         return pieces.copyOf()

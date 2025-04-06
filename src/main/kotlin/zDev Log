@@ -26,7 +26,7 @@
 
 
    todo:
-        - Allow Board class's essential operations to update its bitBoards
+        - Allow Game.Board class's essential operations to update its bitBoards
         -
 
 

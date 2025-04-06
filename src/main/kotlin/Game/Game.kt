@@ -1,8 +1,6 @@
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+package Game
+
 import kotlin.random.Random
-import kotlin.random.nextInt
 
 
 class Game {
@@ -31,8 +29,8 @@ class Game {
             1 -> 0
             else -> { endgame() } // this should never happen
         }
-       // println("Player 1 color:" + player1color)
-        //println("Player 2 color:" + player2color)
+       // println("Player.Player 1 color:" + player1color)
+        //println("Player.Player 2 color:" + player2color)
         board.loadBoard(fen)
         return true
     }
