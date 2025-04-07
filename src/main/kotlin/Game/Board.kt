@@ -11,7 +11,11 @@ value class BitBoard(val board: ULong)
 
 class Board {
     val EMPTY_SQUARE = Piece(pieceCode(0,0))
+
     private var enpassantSquare: Int?
+    private var whiteKingPostion: Int? = null
+    private var blackKingPostion: Int? = null
+
 
     private val controller: Game
     public val moveGenerator: MoveGenerator
@@ -62,6 +66,9 @@ class Board {
             val piece = getPieceFromFen(digestibleBoard[square])
             pieces[square] = piece
             piecePositions[square] = piece
+            if (piece.isKing()) {
+                updateKingPosition(piece.color, square)
+            }
         }
     }
     /**
@@ -72,6 +79,7 @@ class Board {
     fun clearBoard(): Boolean {
         allTypeBitBoards = initializeBitboards()
         pieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
+        piecePositions.clear()
        // piecePositions = pieces.withIndex().associate { (square, piece) -> (square to piece) }.toMutableMap()
         return true
     }
@@ -86,6 +94,9 @@ class Board {
             if (pieces[square].isEmpty()) {
                 pieces[square] = piece
                 piecePositions[square] = piece
+                if (piece.isKing()) {
+                    updateKingPosition(piece.color, square)
+                }
                 return true
             }
         }
@@ -166,8 +177,8 @@ class Board {
         }
     }
 
-    fun generateMoves(color: Int): HashMap<Int, Set<Int>> {
-        return moveGenerator.generateAllMoves(color)
+    fun generateMoves(color: Int): HashMap<Int, MutableSet<Int>> {
+        return moveGenerator.genAllLegalMoves(color)
     }
 
     /**
@@ -190,6 +201,19 @@ class Board {
         }
 
         return -1
+    }
+
+    fun getKingPosition(color: Int): Int? {
+        return when (color) {
+            WHITE ->  whiteKingPostion
+            else ->   blackKingPostion
+        }
+    }
+    private fun updateKingPosition(color: Int, square: Int) {
+        when (color) {
+            WHITE -> whiteKingPostion = square
+            else -> blackKingPostion = square
+        }
     }
 
     fun isInBounds(square: Int): Boolean = square in 0.until(BOARD_SIZE)

@@ -35,7 +35,8 @@ class Parser {
             "turn",
             "new",
             "squares",
-            "l"
+            "l",
+            "s"
         )
 
         // Parameters
@@ -236,6 +237,9 @@ class Parser {
                 "squares" -> squareNumsShowing = visualizer.setShowingSquares()
                 "new" ->   newGameStarted = reference.startNewGame()
                 "l" -> if (fen != NO_PARAM.toString()) reference.startNewGame(fen)
+                "s" -> when (fen) {
+                    else -> loadPinsPosition1()
+                }
                 else -> commandNotFound = true
             }
 
@@ -280,6 +284,27 @@ class Parser {
             log ("\n->   Color $text does not exist.")
             -1
         }
+    }
+
+    fun loadPinsPosition1() {
+        //visualizer.setNewOrientation()
+        visualizer.setNewOrientation(reference.player1color)
+        reference.startNewGame()
+        reference.board.clearBoard()
+        reference.board.addPiece(BLACK, KING, 49)
+        reference.board.addPiece(BLACK, ROOK, 33)
+        reference.board.addPiece(WHITE, ROOK, 9)
+        reference.board.addPiece(WHITE, ROOK, 36)
+        reference.board.addPiece(WHITE, KING, 38)
+        reference.board.addPiece(BLACK, ROOK, 42)
+        reference.board.addPiece(WHITE, QUEEN, 28)
+        reference.board.addPiece(BLACK, ROOK, 32)
+        reference.board.addPiece(WHITE, PAWN, 59)
+        reference.board.addPiece(WHITE, KNIGHT, 24)
+
+
+
+
     }
 
 

@@ -77,7 +77,7 @@ class Visualizer {
     }
 
     fun addMoveSquareMask(square: Int): Boolean {
-        moveSquareMask = display.board.moveGenerator.generatePieceMoves(square, display.board.fetchPiece(square))
+        moveSquareMask = display.board.moveGenerator.genLegalPieceMoves(square, display.board.fetchPiece(square))
         return true
     }
 

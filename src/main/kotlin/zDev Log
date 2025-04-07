@@ -26,6 +26,16 @@
         - Pseudo-legal movegen for all pieces, including enpassant
         - changed filestructures
 
+4/6/4:11 PM -
+    King safety checklist:
+        - king cant move into enemy lanes, nor pawns
+        - king cant "hide" behind itself when in check (pieces must see through the king)
+        - kings must also cast rays to their next square
+        - pieces cant move out of a pin (if their attempted move vector is not on the same axis of the pin )
+        - king cant castle out of check
+        - king cant castle through check (same ray logic as king hiding)
+        - castling moves both the king and rook
+
 
 
    todo:

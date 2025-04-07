@@ -21,6 +21,8 @@ value class Piece(val bitCode: UInt) {
     fun isKing(): Boolean = type == KING
     fun isLeaper(): Boolean = isKing() || isKnight()
     fun isSlider(): Boolean = isBishop() || isRook() || isQueen()
+    fun isLinePiece(): Boolean = isQueen() || isRook()
+    fun isDiagonalPiece(): Boolean = isQueen() || isBishop()
 
     fun moveThisPiece(): Piece = if (hasMoved) this else Piece(bitCode xor MOVED_SELECTOR)
 

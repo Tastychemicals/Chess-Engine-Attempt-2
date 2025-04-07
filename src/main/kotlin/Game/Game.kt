@@ -32,6 +32,7 @@ class Game {
        // println("Player.Player 1 color:" + player1color)
         //println("Player.Player 2 color:" + player2color)
         board.loadBoard(fen)
+        println("new game started")
         return true
     }
 
