@@ -79,7 +79,7 @@ class MoveGenerator(board: Board) {
 
     // Ray Instructions (how should the ray cast?)
     val pinRayInstructions = RayInstructions(kingXrayInstructions, pinCondition, pinTrigger, TRAIL_RAY)
-    val sliderThreatRayInstructions = RayInstructions(queenMoveInstructions, pieceIsEnemyCondition, sliderThreatTrigger, EXACT_RAY)
+    val sliderThreatRayInstructions = RayInstructions(queenMoveInstructions, sliderThreatCondition, sliderThreatTrigger, EXACT_RAY)
     val knightThreatRayInstructions = RayInstructions(knightMoveInstructions, pieceIsKnightCondition, alertFoundTrigger, EXACT_RAY)
     val pawnThreatRayInstructions = RayInstructions(pawnAttackCheckInstructions, pieceIsPawnCondition, alertFoundTrigger, EXACT_RAY)
 
@@ -279,6 +279,7 @@ class MoveGenerator(board: Board) {
         println(threats.keys)
         return threats
     }
+
     fun castPawnThreatRay(square: Int, color: Int): MutableMap<Int, Int> {
         return castRay(square, color, pawnThreatRayInstructions)
     }
@@ -326,6 +327,8 @@ class MoveGenerator(board: Board) {
                     }
                     EXACT_RAY ->  {
                         found.putAll( alerts.associateWith { it } )
+                        found.put(square, square)
+                        println("${alerts.associateWith { it }}  <- alert")
                         break
                     }
                 }
