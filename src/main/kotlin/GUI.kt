@@ -201,12 +201,19 @@ class GUI : Application() {
                 drawSquare(square)
             }
 
+            // draw checked king
+            if (s == visualizer.checkedKingMask) {
+                paintBrush.fill = Color.web("#d10000",0.47)
+                drawSquare(square)
+            }
+
             // draw last move
             if (s == visualizer.lastMoveMask.first ||  s == visualizer.lastMoveMask.second) {
                 paintBrush.fill = Color.web("#F5E000",0.31)
                 drawSquare(square) //
             }
-            // draw movesquares of piece
+
+            // draw move squares of piece
             if (s in visualizer.moveSquareMask) {
                 paintBrush.fill = Color.web("#7DAFB5",0.61)
                 drawSquare(square) //

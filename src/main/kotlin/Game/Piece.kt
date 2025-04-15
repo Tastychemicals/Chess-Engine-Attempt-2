@@ -13,6 +13,7 @@ value class Piece(val bitCode: UInt) {
     // do pieces get a few extra bits to store their bitboard?
 
     fun isEmpty(): Boolean = type == EMPTY
+    fun isOccupied(): Boolean = type != EMPTY
     fun isPawn(): Boolean = type == PAWN
     fun isKnight(): Boolean = type == KNIGHT
     fun isBishop(): Boolean = type == BISHOP
@@ -23,6 +24,28 @@ value class Piece(val bitCode: UInt) {
     fun isSlider(): Boolean = isBishop() || isRook() || isQueen()
     fun isLinePiece(): Boolean = isQueen() || isRook()
     fun isDiagonalPiece(): Boolean = isQueen() || isBishop()
+
+    fun isTeamedWith(other: Piece): Boolean {
+        if ((this.isEmpty() || other.isEmpty())) {
+            return false
+        }
+        return (this.color == other.color)
+    }
+
+    fun isEnemyOf(other: Piece): Boolean {
+        if ((this.isEmpty() || other.isEmpty())) {
+            return false
+        }
+        return (this.color != other.color)
+    }
+
+    fun fetchColor(): Int {
+        return if (isEmpty()) {
+            NO_COLOR
+        } else color
+    }
+
+    fun isColor(color: Int): Boolean = if (isEmpty()) false else this.color == color
 
     fun moveThisPiece(): Piece = if (hasMoved) this else Piece(bitCode xor MOVED_SELECTOR)
 

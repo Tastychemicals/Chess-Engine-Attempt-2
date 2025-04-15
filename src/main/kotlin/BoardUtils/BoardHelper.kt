@@ -19,6 +19,7 @@ const val KING = 6;
 
 const val WHITE = 0
 const val BLACK = 1
+const val NO_COLOR = -1
 
 const val MOVED_SELECTOR: UInt =    0b0000010000u
 const val COLOR_SELECTOR: UInt =    0b0000001000u
