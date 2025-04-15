@@ -3,11 +3,12 @@ import BoardUtils.*
 import Game.Board
 import Game.Piece
 import kotlin.collections.filter
+import kotlin.collections.mutableListOf
 import kotlin.math.abs
 import kotlin.math.min
 
 typealias MoveFilter = (Int, Int, Int) -> Boolean
-typealias alertTrigger = (Int, Piece, Int) -> Boolean
+typealias alertTrigger = (Int, Piece, Int, MutableList<Int>) -> Boolean
 typealias alertCondition = (Int, Piece) -> Boolean
 
 class MoveGenerator(board: Board) {
@@ -21,7 +22,10 @@ class MoveGenerator(board: Board) {
     private val rookMoveInfo = MovementInfo(-8, -1, 1, 8, pieceType = ROOK)
     private val queenMoveInfo = MovementInfo(-9, -8, -7, -1, 1, 7, 8, 9, pieceType = QUEEN)
     private val kingMoveInfo = MovementInfo(-9, -8, -7, -1, 1, 7, 8, 9, pieceType = KING, distance = 1)
+
+
     private val noMoveInfo = MovementInfo(pieceType = EMPTY)
+    val pawnAttackCheckInfo = MovementInfo(-9,-7,7,9, pieceType = BISHOP, distance = 1)
 
     // Move Filters (what moves does the crawler validate?)
     val sliderMoveFilter = { startSquare: Int, newSquare: Int, pastSquare: Int -> isValidSliderMove(startSquare, newSquare, pastSquare) }
@@ -46,6 +50,7 @@ class MoveGenerator(board: Board) {
 
     val noInstructions = MoveInstructions(noMoveInfo, leaperMoveFilter)
     val kingXrayInstructions = MoveInstructions(queenMoveInfo, pinRayFilter, XRAY_CONDITION)
+    val pawnAttackCheckInstructions =  MoveInstructions(pawnAttackCheckInfo, sliderMoveFilter)
 
     val utilityIntHolder = IntHolder()
     val kingSquareHolder = IntHolder()
@@ -61,15 +66,22 @@ class MoveGenerator(board: Board) {
     // Ray conditions (when should a ray remember a move?)
     val pinCondition = {color: Int, piece: Piece  -> piece.isColor(color)}
     val sliderThreatCondition = {color: Int, piece: Piece -> !piece.isColor(color)}
+    val pieceIsEnemyCondition = {color: Int, piece: Piece -> piece.isOccupied() && !piece.isColor(color)}
+
+    val pieceIsPawnCondition = {color: Int, piece: Piece -> pieceIsEnemyCondition(color, piece) && piece.isPawn()}
+    val pieceIsKnightCondition = {color: Int, piece: Piece ->  pieceIsEnemyCondition(color, piece) && piece.isKnight()}
 
 
     // Ray Triggers (when should the ray return data?)
-    val pinTrigger = { color: Int, piece: Piece, vector: Int -> sliderMatchesVector(piece, vector) && !piece.isColor(color) }
-    val sliderThreatTrigger = { color: Int, piece: Piece, vector: Int -> sliderMatchesVector(piece, vector) && !piece.isColor(color) }
+    val pinTrigger = { color: Int, piece: Piece, vector: Int, alerts: MutableList<Int> -> sliderMatchesVector(piece, vector) && !piece.isColor(color) }
+    val sliderThreatTrigger = { color: Int, piece: Piece, vector: Int, alerts: MutableList<Int> -> sliderMatchesVector(piece, vector) && !piece.isColor(color) }
+    val alertFoundTrigger = { color: Int, piece: Piece, vector: Int, alerts: MutableList<Int>  -> alerts.isNotEmpty() }
 
     // Ray Instructions (how should the ray cast?)
     val pinRayInstructions = RayInstructions(kingXrayInstructions, pinCondition, pinTrigger, TRAIL_RAY)
-    val sliderThreatRayInstructions = RayInstructions(queenMoveInstructions, sliderThreatCondition, sliderThreatTrigger, EXACT_RAY)
+    val sliderThreatRayInstructions = RayInstructions(queenMoveInstructions, pieceIsEnemyCondition, sliderThreatTrigger, EXACT_RAY)
+    val knightThreatRayInstructions = RayInstructions(knightMoveInstructions, pieceIsKnightCondition, alertFoundTrigger, EXACT_RAY)
+    val pawnThreatRayInstructions = RayInstructions(pawnAttackCheckInstructions, pieceIsPawnCondition, alertFoundTrigger, EXACT_RAY)
 
 
 
@@ -157,31 +169,16 @@ class MoveGenerator(board: Board) {
 
 
         val pins = castPinRay(kingSquare, color)
-        val kingDefendingSquares = castSliderThreatRay(kingSquare, color)
+        val kingDefendingSquares = castThreatRay(kingSquare, color)
 
 
-
-
-
-        // call king validity check here
         for (squareAndPiece in squaresAndPieces) {
             allMoves.put(squareAndPiece.key, genLegalPieceMoves(squareAndPiece, pins, kingDefendingSquares.keys ))
         }
         return allMoves
     }
 
-    fun getCheckedKing(color: Int): Int {
-        kingSquareHolder.hold(-1)
-        val kingSquare = referenceBoard.getKingPosition(color)
-        if (kingSquare != null) {
-            val kingDefendingSquares = castSliderThreatRay(kingSquare, getPiece(kingSquare).fetchColor())
-            if (kingDefendingSquares.isNotEmpty()) {
-                kingSquareHolder.hold(kingSquare)
-            }
-        }
-        return kingSquareHolder.retrieve()
 
-    }
 
 
     // for generating actual moves, moves which will be reported in game
@@ -234,7 +231,7 @@ class MoveGenerator(board: Board) {
         for (squareAndPiece in squaresAndPieces) {
             val square = squareAndPiece.key;
             val piece = squareAndPiece.value;
-            if (piece.isPawn()) allMoves.put(square, getMoves(square, piece)) else
+            if (piece.isPawn()) allMoves.put(square, crawlPawnMoves(square, piece, ILLEGAL_CAPTURES).toMutableSet()) else
             allMoves.put(square, crawlMoves(square, color, getMovementInfo(piece.type) ,sliderMoveFilter, ILLEGAL_CAPTURES, utilityIntHolder).toMutableSet())
         }
         return allMoves
@@ -272,18 +269,25 @@ class MoveGenerator(board: Board) {
     fun castPinRay(square: Int, color: Int): Map<Int, Int> {
         return castRay(square, color, pinRayInstructions)
     }
+
+
+    fun castThreatRay(square: Int, color: Int): MutableMap<Int, Int> {
+        val threats = mutableMapOf<Int,Int>()
+        threats.putAll(castSliderThreatRay(square, color))
+        threats.putAll(castKnightThreatRay(square, color))
+        threats.putAll(castPawnThreatRay(square, color))
+        println(threats.keys)
+        return threats
+    }
+    fun castPawnThreatRay(square: Int, color: Int): MutableMap<Int, Int> {
+        return castRay(square, color, pawnThreatRayInstructions)
+    }
     fun castSliderThreatRay(square: Int, color: Int): MutableMap<Int, Int> {
         return castRay(square,color, sliderThreatRayInstructions)
     }
-
-    fun castThreatRay(square: Int, color: Int) {
-        val threatVectors = mutableMapOf<Int,Int>()
-        val ray2 = crawlMoves(square,color, knightMoveInstructions).iterator()
+    fun castKnightThreatRay(square: Int, color: Int): MutableMap<Int, Int> {
+        return castRay(square, color, knightThreatRayInstructions)
     }
-    fun castKnightThreatRay() {
-
-    }
-
 
 
     fun castRay(square: Int, color: Int, rayInstructions: RayInstructions): MutableMap<Int, Int> {
@@ -315,7 +319,7 @@ class MoveGenerator(board: Board) {
                 alerts.add(nextSquare)
             }
 
-            if (alertTrigger(color, piece, vector)) {
+            if (alertTrigger(color, piece, vector, alerts)) {
                 when (rayType) {
                     TRAIL_RAY -> for (square in alerts) {
                         found.put(square, abs(instructions.retrieve()))
@@ -413,7 +417,7 @@ class MoveGenerator(board: Board) {
             moveInstructions.specialCondition, moveInstructions.holder())
     }
 
-    private fun crawlPawnMoves(startSquare: Int, piece: Piece): MutableSet<Int> {
+    private fun crawlPawnMoves(startSquare: Int, piece: Piece, illegalCaptures: Int = -1): MutableSet<Int> {
         val validSquares = mutableSetOf<Int>()
         var canJump = false
 
@@ -421,9 +425,8 @@ class MoveGenerator(board: Board) {
             val newSquare = startSquare + (vector * getPawnDirection(piece.color))
 
 
-            if (isDiagonalVector(vector)
-                && (isValidPawnCapture( startSquare, newSquare, piece.color)
-                        || isEnpassantCapture(newSquare, piece.color))) {
+            if ((isDiagonalVector(vector) && (isValidPawnCapture( startSquare, newSquare, piece.color))
+                        || isEnpassantCapture(newSquare, piece.color)) || illegalCaptures == ILLEGAL_CAPTURES) {
                 validSquares.add(newSquare)
             }
 
@@ -532,7 +535,18 @@ class MoveGenerator(board: Board) {
     private fun isInBounds(square: Int): Boolean {
         return !(square > BOARD_SIZE || square < 0)
     }
+    fun getCheckedKing(color: Int): Int {
+        kingSquareHolder.hold(-1)
+        val kingSquare = referenceBoard.getKingPosition(color)
+        if (kingSquare != null) {
+            val kingDefendingSquares = castThreatRay(kingSquare, getPiece(kingSquare).fetchColor())
+            if (kingDefendingSquares.isNotEmpty()) {
+                kingSquareHolder.hold(kingSquare)
+            }
+        }
+        return kingSquareHolder.retrieve()
 
+    }
 
     // todo: fix board rendering and update structures to use pieces and bit boards
     // todo: implement the BoardUtils.pieceCode encoder
