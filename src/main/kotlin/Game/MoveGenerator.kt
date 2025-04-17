@@ -409,7 +409,6 @@ class MoveGenerator(board: Board) {
                     NORMAL_RAY ->  {
                         found.putAll( format(alerts) )
                         found.put(startSquare, startSquare)
-
                         break
                     }
                     CASTLE_RAY -> {

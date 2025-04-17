@@ -172,10 +172,10 @@ class Board {
 
 
          if (doesNotWrap(origin, shortSquare) && leftPiece.isRook()) {
-            rookDestinationHolder.hold(longSquare)
+            rookDestinationHolder.hold(origin - 1)
              return shortSquare
          } else if (doesNotWrap(origin, longSquare) && rightPiece.isRook())  {
-            rookDestinationHolder.hold(shortSquare)
+            rookDestinationHolder.hold(origin + 1)
             return longSquare
          } else  {
             rookDestinationHolder.drop()
