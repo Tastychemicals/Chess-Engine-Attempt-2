@@ -25,6 +25,7 @@ class Board {
     private var validMoves: HashMap<Int, Set<Int>>
 
     var lastMove: Pair<Int,Int>
+    private val rookDestinationHolder = Holder<Int>()
 
     constructor(controller: Game) {
         this.moveGenerator = MoveGenerator(this)
@@ -134,9 +135,14 @@ class Board {
                     val validMoves = generateMoves(movingPiece.color)
                     if (validMoves[origin]?.contains(endSquare) == true ) {
                         removePiece(origin)
+
+
                         if (isEnpassantMove(movingPiece, origin, endSquare)) {
                             removePiece(getSquareBehind(endSquare, movingPiece.color))
-                        } else removePiece(endSquare)
+                        } else if (isCastleMove(movingPiece, origin, endSquare)) {
+                            makeMove(getAdjacentRookSquare(endSquare), rookDestinationHolder.drop() ?: -1)
+                        }
+                        else removePiece(endSquare)
 
                         addPiece(movingPiece.moveThisPiece(), endSquare)
 
@@ -151,6 +157,25 @@ class Board {
         return false
 
     }
+    private fun getAdjacentRookSquare(origin: Int): Int {
+        val shortSquare = origin + 1
+        val longSquare = origin - 2
+
+        val leftPiece = fetchPiece(shortSquare)
+        val rightPiece = fetchPiece(longSquare)
+
+
+         if (doesNotWrap(origin, shortSquare) && leftPiece.isRook()) {
+            rookDestinationHolder.hold(longSquare)
+             return shortSquare
+         } else if (doesNotWrap(origin, longSquare) && rightPiece.isRook())  {
+            rookDestinationHolder.hold(shortSquare)
+            return longSquare
+         } else  {
+            rookDestinationHolder.drop()
+             return -1
+         }
+    }
     private fun updateEnpassantSquare(origin: Int, endSquare: Int, piece: Piece) {
         enpassantSquare = if (rowDistance(origin, endSquare) == 2 && piece.isPawn()) {
             endSquare
@@ -158,6 +183,15 @@ class Board {
             null
         }
     }
+    private fun isSpecialMove(piece: Piece, origin: Int, endSquare: Int) {
+
+    }
+
+    private fun isCastleMove(piece: Piece, origin: Int, endSquare: Int): Boolean {
+        return piece.isKing() &&  colDistance(origin, endSquare) == CASTLE_MOVE_DISTANCE
+    }
+
+
     private fun isEnpassantMove(piece: Piece, origin: Int, endSquare: Int): Boolean {
         return piece.isPawn()
                 && isOnDiffRow(origin, endSquare)

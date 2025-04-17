@@ -2,7 +2,7 @@ package Game
 import BoardUtils.*
 
 @JvmInline
-value class Piece(val bitCode: UInt) {
+value class Piece(val bitCode: UInt = 0u) {
 
     // the lsb of each value needs to be in first place value -> 0 0 000    // 000000 // hasmoved, color, type
     val color get() = getProperty(COLOR_SELECTOR, 3)

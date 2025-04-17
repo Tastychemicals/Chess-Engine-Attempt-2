@@ -25,6 +25,8 @@ const val MOVED_SELECTOR: UInt =    0b0000010000u
 const val COLOR_SELECTOR: UInt =    0b0000001000u
 const val TYPE_SELECTOR: UInt =     0b0000000111u
 
+const val CASTLE_MOVE_DISTANCE = 2
+
 
 val typeNames = arrayOf(
     "EMPTY",
@@ -61,6 +63,9 @@ fun isOnDiffCol(origin: Int, endSquare: Int): Boolean {
     return colDistance(origin, endSquare) != 0
 }
 
+fun doesWrap(origin: Int, endSquare: Int): Boolean = ((colDistance(origin, endSquare) > 2))
+fun doesNotWrap(origin: Int, endSquare: Int): Boolean = (colDistance(origin, endSquare) <= 2)
+
 fun getSquareBehind(squarePosition: Int, color: Int): Int {
     return squarePosition + (8 * getPawnDirection(getOppositeColor(color)))
 }
@@ -74,8 +79,9 @@ fun getOppositeColor(color: Int): Int {
 }
 
  fun getPawnDirection(color: Int): Int = when (color) {
-    1 -> 1
-    else -> -1
+     BLACK -> 1
+     WHITE -> -1
+     else -> 0
 }
 
 fun pieceCode(color: Int, type: Int): UInt {

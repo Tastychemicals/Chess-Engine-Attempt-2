@@ -18,6 +18,7 @@ class Visualizer {
     var mask = mutableListOf<Int>()
     var moveSquareMask = mutableSetOf<Int>()
     var checkedKingMask: Int = -1
+    var heatMask = mutableMapOf<Int, Int>()
 
     var showAllSquares: Boolean
     var emptySquareFiltering = true
@@ -61,7 +62,9 @@ class Visualizer {
     fun updateCustomMask(): Boolean {
         mask.clear()
         moveSquareMask.clear()
+        heatMask.clear()
         checkedKingMask = display.board.moveGenerator.getCheckedKing(display.turn)
+        heatMask = display.board.moveGenerator.enemyAttackSquares
         val pieces = display.board.fetchAllPieces()
 
         for (square in 0.until(BOARD_SIZE)) {

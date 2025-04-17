@@ -2,20 +2,24 @@ package player
 import BoardUtils.*
 import Game.Board
 import Game.Piece
+import player.MoveGenerator.MoveInstructions
 import kotlin.collections.filter
 import kotlin.collections.mutableListOf
 import kotlin.math.abs
 import kotlin.math.min
+import kotlin.math.sign
 
 typealias MoveFilter = (Int, Int, Int) -> Boolean
-typealias alertTrigger = (Int, Piece, Int, MutableList<Int>) -> Boolean
-typealias alertCondition = (Int, Piece) -> Boolean
+typealias alertTrigger = (Int, Int, Piece, Int, MutableList<Int>) -> Boolean
+typealias alertCondition = (Int, Int, Int, Piece) -> Boolean
+typealias trailInfo = (Int, Int, MoveInstructions) -> Int
 
 class MoveGenerator(board: Board) {
-    private var referenceBoard = board
+    //------------------------------------------------------------------------------------------------------------------
+    /**
+                                    Move Information (how should the crawler move?)
+    */
 
-
-    //  Move Information (how should the crawler move?)
     private val pawnMoveInfo = MovementInfo(7, 8, 9, 16, pieceType = PAWN)
     private val knightMoveInfo = MovementInfo(-17, -15, -10,-6, 6, 10, 15, 17, pieceType = KNIGHT, distance = 1)
     private val bishopMoveInfo = MovementInfo(-9, -7, 7, 9, pieceType = BISHOP)
@@ -25,22 +29,33 @@ class MoveGenerator(board: Board) {
 
 
     private val noMoveInfo = MovementInfo(pieceType = EMPTY)
-    val pawnAttackCheckInfo = MovementInfo(-9,-7,7,9, pieceType = BISHOP, distance = 1)
+    private val pawnAttackInfo = MovementInfo(-9,-7,7,9, pieceType = BISHOP, distance = 1)
+    private val castlingMoveInfo = MovementInfo(-1,1, pieceType = ROOK, distance = 4)
+    //------------------------------------------------------------------------------------------------------------------
 
-    // Move Filters (what moves does the crawler validate?)
+    /**
+                                 Move Filters (what moves does the crawler validate?)
+     */
     val sliderMoveFilter = { startSquare: Int, newSquare: Int, pastSquare: Int -> isValidSliderMove(startSquare, newSquare, pastSquare) }
     val leaperMoveFilter = { startSquare: Int, newSquare: Int, pastSquare: Int -> isValidLeaperMove(startSquare, newSquare, pastSquare) }
+
+    val pawnAttackFilter = { startSquare: Int, newSquare: Int, pastSquare: Int ->  isValidPawnCapture(startSquare, newSquare, getPiece(startSquare).fetchColor()) }
     val pinRayFilter = { startSquare: Int, newSquare: Int, pastSquare: Int ->
         isValidSliderMove(startSquare, newSquare, pastSquare) && (!moveHasDoubleColor(startSquare, newSquare, pastSquare) ) }
+    //------------------------------------------------------------------------------------------------------------------
 
-    // Special Crawler Flags (what exceptions should the crawler make?)
+
+    /**
+                                Crawler Flags (what exceptions should the crawler make?)
+     */
     val NO_CONDITION = -1
     val XRAY_CONDITION = 1
     val ILLEGAL_CAPTURES = 2
-    val CAPTURE_KINGS = 3
+    //------------------------------------------------------------------------------------------------------------------
 
-
-    // Crawler Instructions
+    /**
+                                                    Crawler Instructions
+     */
     val pawnMoveInstructions = MoveInstructions(pawnMoveInfo, leaperMoveFilter)
     val knightMoveInstructions = MoveInstructions( knightMoveInfo, leaperMoveFilter)
     val bishopMoveInstructions = MoveInstructions( bishopMoveInfo, sliderMoveFilter)
@@ -50,39 +65,100 @@ class MoveGenerator(board: Board) {
 
     val noInstructions = MoveInstructions(noMoveInfo, leaperMoveFilter)
     val kingXrayInstructions = MoveInstructions(queenMoveInfo, pinRayFilter, XRAY_CONDITION)
-    val pawnAttackCheckInstructions =  MoveInstructions(pawnAttackCheckInfo, sliderMoveFilter)
+    val pawnAttackCheckInstructions =  MoveInstructions(pawnAttackInfo, pawnAttackFilter)
+    val castlingInstructions = MoveInstructions(castlingMoveInfo, sliderMoveFilter, ILLEGAL_CAPTURES)
 
-    val utilityIntHolder = IntHolder()
-    val kingSquareHolder = IntHolder()
+    //------------------------------------------------------------------------------------------------------------------
+    /**
+     *                                              Holders
+     */
+    val utilityIntHolder = Holder<Int>()
+    val kingSquareHolder = Holder<Int>()
+    //------------------------------------------------------------------------------------------------------------------
 
-    // Types of rays
-    val X_RAY = 0
-    val IGNORANT_RAY = 1
-    val TRAIL_RAY = 0
-    val EXACT_RAY = 1
+    /**
+                                                 Types of rays
+     */
+    val TRAIL_RAY = 0           // returns a trail of squares
+    val FINDER_RAY = 1          // returns a single value where ever conditions were met
+    val CASTLE_RAY = 2
+
+    //------------------------------------------------------------------------------------------------------------------
+    /**
+                                    Ray conditions (when should a ray remember a square?)
+     */
+
+    val NO_PARAM = -1
+    val KING_CASTLE_DISTANCE = 2
+
+    val pinCondition: alertCondition = {color: Int, _, _, piece: Piece  -> piece.isColor(color)}
+    val sliderThreatCondition: alertCondition = {color: Int, _, _, piece: Piece -> !piece.isColor(color)}
+    val pieceIsEnemyCondition: alertCondition = {color: Int, _, _, piece: Piece -> piece.isOccupied() && !piece.isColor(color)}
+    val castlingCondition: alertCondition = {color: Int, square: Int, distance, piece: Piece ->
+
+        (piece.isColor(color)   &&     // must be team
+            piece.isRook() && piece.hasMoved) ||
+                                                        // add you because the size of the alerts will be too large
+                (!piece.isColor(color) && piece.isEmpty() && distance <= KING_CASTLE_DISTANCE) ||
+
+                        piece.isOccupied() && !piece.isRook()
+
+    }
 
 
 
-    // Ray conditions (when should a ray remember a move?)
-    val pinCondition = {color: Int, piece: Piece  -> piece.isColor(color)}
-    val sliderThreatCondition = {color: Int, piece: Piece -> !piece.isColor(color)}
-    val pieceIsEnemyCondition = {color: Int, piece: Piece -> piece.isOccupied() && !piece.isColor(color)}
+    val pieceIsPawnCondition: alertCondition = {color: Int, _, _, piece: Piece -> pieceIsEnemyCondition(color, NO_PARAM, NO_PARAM, piece) && piece.isPawn()}
+    val pieceIsKnightCondition: alertCondition = {color: Int, _, _, piece: Piece ->  pieceIsEnemyCondition(color, NO_PARAM, NO_PARAM, piece) && piece.isKnight()}
+    //------------------------------------------------------------------------------------------------------------------
 
-    val pieceIsPawnCondition = {color: Int, piece: Piece -> pieceIsEnemyCondition(color, piece) && piece.isPawn()}
-    val pieceIsKnightCondition = {color: Int, piece: Piece ->  pieceIsEnemyCondition(color, piece) && piece.isKnight()}
+    /**
+                                    Ray Triggers (when should the ray return data?)
+     */
+    val pinTrigger: alertTrigger = { color: Int, square: Int, piece: Piece, vector: Int, alerts: MutableList<Int> -> sliderMatchesVector(piece, vector) && !piece.isColor(color) }
+    val sliderThreatTrigger: alertTrigger = { color: Int, square: Int, piece: Piece, vector: Int, alerts: MutableList<Int> -> sliderMatchesVector(piece, vector) && !piece.isColor(color) }
+    val alertFoundTrigger: alertTrigger = { color: Int, square: Int, piece: Piece, vector: Int, alerts: MutableList<Int>  -> alerts.isNotEmpty() }
+    val edgeTouchedTrigger: alertTrigger = { _, square: Int, piece: Piece, vector: Int, _  -> isOnEdge(square) }
+    val blockageTrigger: alertTrigger = { color: Int, square: Int, piece: Piece, vector: Int, alerts: MutableList<Int> -> piece.isOccupied()}
+    val collisionFoundTrigger: alertTrigger = {color: Int, square: Int, piece: Piece, vector: Int, alerts: MutableList<Int> ->
+        piece.isOccupied()
+    }
+    //------------------------------------------------------------------------------------------------------------------
+
+    /**
+     *                                  Ray trail Info (What should the trail add?)
+     */
+    val vectorTrailInfo: trailInfo = { currentSquare: Int, distance: Int, instructions: MoveInstructions  -> instructions.retrieve()}
+    val castlingTrailInfo: trailInfo = { currentSquare: Int, distance: Int, instructions: MoveInstructions  ->
+        if (getPiece(currentSquare).isRook()) {
+            if (getPiece(currentSquare).hasMoved) {
+                currentSquare
+            }
+            -1
+        } else {
+            if ((currentSquare !in enemyAttackSquares) && distance < 3) {
+                currentSquare
+            }
+            -1
+        }
+    }
+    val noTrailInfo: trailInfo = { currentSquare: Int, distance: Int, instructions: MoveInstructions  -> -1}
+    //------------------------------------------------------------------------------------------------------------------
+    /**
+                                    Ray Instructions (how should the ray cast?)
+     */
+    val pinRayInstructions = RayInstructions(kingXrayInstructions, pinCondition, pinTrigger, TRAIL_RAY, vectorTrailInfo)
+    val sliderThreatRayInstructions = RayInstructions(queenMoveInstructions, sliderThreatCondition, sliderThreatTrigger, FINDER_RAY)
+    val knightThreatRayInstructions = RayInstructions(knightMoveInstructions, pieceIsKnightCondition, alertFoundTrigger, FINDER_RAY)
+    val pawnThreatRayInstructions = RayInstructions(pawnAttackCheckInstructions, pieceIsPawnCondition, alertFoundTrigger, FINDER_RAY)
+    val castlingRayInstructions = RayInstructions(castlingInstructions, castlingCondition, collisionFoundTrigger, CASTLE_RAY)
+    //------------------------------------------------------------------------------------------------------------------
 
 
-    // Ray Triggers (when should the ray return data?)
-    val pinTrigger = { color: Int, piece: Piece, vector: Int, alerts: MutableList<Int> -> sliderMatchesVector(piece, vector) && !piece.isColor(color) }
-    val sliderThreatTrigger = { color: Int, piece: Piece, vector: Int, alerts: MutableList<Int> -> sliderMatchesVector(piece, vector) && !piece.isColor(color) }
-    val alertFoundTrigger = { color: Int, piece: Piece, vector: Int, alerts: MutableList<Int>  -> alerts.isNotEmpty() }
-
-    // Ray Instructions (how should the ray cast?)
-    val pinRayInstructions = RayInstructions(kingXrayInstructions, pinCondition, pinTrigger, TRAIL_RAY)
-    val sliderThreatRayInstructions = RayInstructions(queenMoveInstructions, sliderThreatCondition, sliderThreatTrigger, EXACT_RAY)
-    val knightThreatRayInstructions = RayInstructions(knightMoveInstructions, pieceIsKnightCondition, alertFoundTrigger, EXACT_RAY)
-    val pawnThreatRayInstructions = RayInstructions(pawnAttackCheckInstructions, pieceIsPawnCondition, alertFoundTrigger, EXACT_RAY)
-
+    private var referenceBoard = board
+     var enemyAttackSquares = mutableMapOf<Int,Int>()
+    private var kingDefendingSquares = mutableMapOf<Int,Int>()
+    private var pins = mutableMapOf<Int,Int>()
+    private var attackedKing = -1
 
 
 
@@ -91,12 +167,12 @@ class MoveGenerator(board: Board) {
         val moveInfo: MovementInfo,
         val moveFilter: MoveFilter,
         val specialCondition: Int = -1,
-        private val holder: IntHolder = IntHolder()
+        private val holder: Holder<Int> = Holder()
     ) {
         fun retrieve(): Int {
-            return holder.retrieve()
+            return holder.show() ?: 0
         }
-        fun holder(): IntHolder {
+        fun holder(): Holder<Int> {
             return holder
         }
         fun valueChanged(): Boolean {
@@ -104,12 +180,13 @@ class MoveGenerator(board: Board) {
         }
     }
 
-    data class RayInstructions(val moveInstructions: MoveInstructions,
-                               val alertCondition: alertCondition,
-                               val alertTrigger: alertTrigger,
-                               val rayType: Int)
-
-
+    data class RayInstructions(
+        val moveInstructions: MoveInstructions,
+        val alertCondition: alertCondition,
+        val alertTrigger: alertTrigger,
+        val rayType: Int,
+        val trailInfo: trailInfo = { currentSquare: Int, distance: Int, instructions: MoveInstructions  -> -1}
+    )
     data class MovementInfo(
         val vector1: Int = 0,
         val vector2: Int = 0,
@@ -143,6 +220,13 @@ class MoveGenerator(board: Board) {
             else -> noMoveInfo
         }
     }
+    private fun getMoveFilter(pieceType: Int): (Int, Int, Int) -> Boolean {
+        return when (pieceType) {
+            KNIGHT -> leaperMoveFilter
+            KING -> leaperMoveFilter
+            else -> sliderMoveFilter
+        }
+    }
     private fun getMoveInstructions(type: Int): MoveInstructions {
         val instructions = when(type) {
             PAWN -> pawnMoveInstructions
@@ -168,13 +252,19 @@ class MoveGenerator(board: Board) {
 
 
 
-        val pins = castPinRay(kingSquare, color)
-        val kingDefendingSquares = castThreatRay(kingSquare, color)
+        pins = castPinRay(kingSquare, color)
+        kingDefendingSquares = castThreatRay(kingSquare, color)
+        enemyAttackSquares = getOpponentAttackSquares(color)
+        attackedKing = getCheckedKing(color)
 
 
         for (squareAndPiece in squaresAndPieces) {
-            allMoves.put(squareAndPiece.key, genLegalPieceMoves(squareAndPiece, pins, kingDefendingSquares.keys ))
+            allMoves.put(squareAndPiece.key, genLegalPieceMoves(squareAndPiece))
         }
+//        for (move in allMoves) {
+//            println(move)
+//        }
+
         return allMoves
     }
 
@@ -182,34 +272,38 @@ class MoveGenerator(board: Board) {
 
 
     // for generating actual moves, moves which will be reported in game
-    private fun genLegalPieceMoves(squareAndPiece:  Map.Entry<Int, Piece>, pins: Map<Int,Int>, kingDefendingSquares: MutableSet<Int> ): MutableSet<Int> {
+    private fun genLegalPieceMoves(squareAndPiece:  Map.Entry<Int, Piece>): MutableSet<Int> {
         val piece = squareAndPiece.value
         val square = squareAndPiece.key
-        return genLegalPieceMoves(square, piece, pins, kingDefendingSquares)
+        return genLegalPieceMoves(square, piece)
     }
-    fun genLegalPieceMoves(square: Int, piece: Piece, pins: Map<Int,Int>, kingDefendingSquares: MutableSet<Int>): MutableSet<Int> {
+    fun genLegalPieceMoves(square: Int, piece: Piece): MutableSet<Int> {
         var moves = genPseudoPieceMoves(square, piece)
 
         if (piece.isKing()) {
-            kingSquareHolder.hold(-1)
-            validateKingMoves(piece.color, moves)
+
+            validateKingMoves(piece.color, square, moves)
+            if (!piece.hasMoved && attackedKing != square) addCastleMoves(piece.color, square, moves)
+
 
         }else  {
             moves = filterOutPins(square, moves, pins)
-            moves = filterDefense(moves, kingDefendingSquares)
+            moves = filterDefense(moves, kingDefendingSquares.keys)
         }
 
         return moves
     }
 
-    private fun validateKingMoves(color: Int, moves: MutableSet<Int>): MutableSet<Int> {
-        val kingSquare = getKingSquare(color)
-        if (kingSquare != null) {
-            moves.removeAll(getOpponentAttackSquares(color))
-        }
-        //println(moves)
+    private fun validateKingMoves(color: Int, square: Int, moves: MutableSet<Int>): MutableSet<Int> {
+        moves.removeAll(enemyAttackSquares.keys)
         return moves
     }
+    private fun addCastleMoves(color: Int,square: Int, moves: MutableSet<Int>): MutableSet<Int> {
+        moves.addAll(castCastleRay(square, color).keys)
+        return moves
+    }
+
+
     private fun filterOutPins(square: Int, moves: MutableSet<Int>, pins: Map<Int, Int>): MutableSet<Int> {
         if (square in pins.keys) {
             return moves.filter { (vectorBetween(it, square) == abs(pins[square] as Int)) }.toMutableSet()
@@ -232,7 +326,7 @@ class MoveGenerator(board: Board) {
             val square = squareAndPiece.key;
             val piece = squareAndPiece.value;
             if (piece.isPawn()) allMoves.put(square, crawlPawnMoves(square, piece, ILLEGAL_CAPTURES).toMutableSet()) else
-            allMoves.put(square, crawlMoves(square, color, getMovementInfo(piece.type) ,sliderMoveFilter, ILLEGAL_CAPTURES, utilityIntHolder).toMutableSet())
+            allMoves.put(square, crawlMoves(square, color, getMovementInfo(piece.type) ,getMoveFilter(piece.type), ILLEGAL_CAPTURES, utilityIntHolder).toMutableSet())
         }
         return allMoves
     }
@@ -245,97 +339,117 @@ class MoveGenerator(board: Board) {
 
 
     // gets the sum of all pseudo attack squares of the color's opponent (for king safety check)
-    fun getOpponentAttackSquares(color: Int): Set<Int> {
+    fun getOpponentAttackSquares(color: Int): MutableMap<Int, Int> {
         val allPseudoMoves = genAllPseudoMovesIllegalCaptures(getOppositeColor(color))
-        var attackSquares = mutableSetOf<Int>()
+        var attackSquares = mutableMapOf<Int, Int>()
 
 
         for (originSquare in allPseudoMoves.keys) {
             val piece = getPiece(originSquare)
             val squares = allPseudoMoves[originSquare]
             if (squares != null) {
-            if (piece.isPawn()) {
-                attackSquares.addAll(squares.filter { isDiagonalMove(it, originSquare) }.toSet())
-            } else {
-                attackSquares.addAll(squares)
-            }
-        }
-        }
+                if (piece.isPawn()) {
+                    attackSquares.putAll(squares.filter { isDiagonalMove(it, originSquare) }.associateWith { attackSquares.getOrDefault(it, 0) + 1 })
+                } else {
+                    attackSquares.putAll(squares.associateWith { attackSquares.getOrDefault(it, 0) + 1 })
 
+                }
+            }
+
+        }
+        println(attackSquares)
         return attackSquares
     }
-
-    // casts a ray as a queen to evaluate pins on king
-    fun castPinRay(square: Int, color: Int): Map<Int, Int> {
-        return castRay(square, color, pinRayInstructions)
-    }
-
-
-    fun castThreatRay(square: Int, color: Int): MutableMap<Int, Int> {
-        val threats = mutableMapOf<Int,Int>()
-        threats.putAll(castSliderThreatRay(square, color))
-        threats.putAll(castKnightThreatRay(square, color))
-        threats.putAll(castPawnThreatRay(square, color))
-        println(threats.keys)
-        return threats
-    }
-
-    fun castPawnThreatRay(square: Int, color: Int): MutableMap<Int, Int> {
-        return castRay(square, color, pawnThreatRayInstructions)
-    }
-    fun castSliderThreatRay(square: Int, color: Int): MutableMap<Int, Int> {
-        return castRay(square,color, sliderThreatRayInstructions)
-    }
-    fun castKnightThreatRay(square: Int, color: Int): MutableMap<Int, Int> {
-        return castRay(square, color, knightThreatRayInstructions)
-    }
-
 
     fun castRay(square: Int, color: Int, rayInstructions: RayInstructions): MutableMap<Int, Int> {
         return castRay(
             square, color,
             rayInstructions.moveInstructions, rayInstructions.alertCondition,
-            rayInstructions.alertTrigger, rayInstructions.rayType
+            rayInstructions.alertTrigger, rayInstructions.rayType, rayInstructions.trailInfo
         )
     }
     fun castRay(
-        square: Int, color: Int,
+        startSquare: Int, color: Int,
         instructions: MoveInstructions, alertCondition: alertCondition,
-        alertTrigger: alertTrigger, rayType: Int): MutableMap<Int, Int>
+        alertTrigger: alertTrigger, rayType: Int, trailInfo: trailInfo): MutableMap<Int, Int>
     {
         val found = mutableMapOf<Int,Int>()
         val alerts = mutableListOf<Int>()
-        val ray = crawlMoves(square, color, instructions).iterator()
+        val ray = crawlMoves(startSquare, color, instructions).iterator()
+        var distance = 0
         while (ray.hasNext()) {
             val nextSquare = ray.next()
             val vector = instructions.retrieve()
             val piece = getPiece(nextSquare)
+            distance += 1
 
             // we don't care about old prospects because were now looking in a different direction.
             if (instructions.valueChanged()) {
                 alerts.clear()
+                distance = 1
             }
 
-            if (alertCondition(color, piece)) {     //alert trigger
+            if (alertCondition(color, startSquare, distance, piece)) {     //alert trigger
                 alerts.add(nextSquare)
             }
 
-            if (alertTrigger(color, piece, vector, alerts)) {
+            if (alertTrigger(color, startSquare, piece, vector, alerts)) {
                 when (rayType) {
                     TRAIL_RAY -> for (square in alerts) {
-                        found.put(square, abs(instructions.retrieve()))
+                        found.put(square, trailInfo(square, distance, instructions))
                     }
-                    EXACT_RAY ->  {
-                        found.putAll( alerts.associateWith { it } )
-                        found.put(square, square)
-                        println("${alerts.associateWith { it }}  <- alert")
+                    FINDER_RAY ->  {
+                        found.putAll( format(alerts) )
+                        found.put(startSquare, startSquare)
+
                         break
+                    }
+                    CASTLE_RAY -> {
+                        if (alerts.size != distance && alerts.size == 2 && alerts.all { it !in enemyAttackSquares.keys}) {
+                            found.putAll(format(alerts))
+                        }
+                       // }
+
                     }
                 }
             }
         }
         return found
     }
+
+    fun format(list: MutableList<Int>): Map<Int, Int> {
+        return list.associateWith { it }
+    }
+
+    // casts a ray as a queen to evaluate pins on king
+    fun castPinRay(square: Int, color: Int): MutableMap<Int, Int> {
+        return castRay(square, color, pinRayInstructions)
+    }
+    fun castThreatRay(square: Int, color: Int): MutableMap<Int, Int> {
+        val threats = mutableMapOf<Int,Int>()
+        threats.putAll(castSliderThreatRay(square, color))
+        threats.putAll(castKnightThreatRay(square, color))
+        threats.putAll(castPawnThreatRay(square, color))
+       // println(threats.keys)
+        return threats
+    }
+
+    private fun castCastleRay(square: Int, color: Int): MutableMap<Int, Int> {
+        return castRay(square, color, castlingRayInstructions)
+    }
+
+    private fun castPawnThreatRay(square: Int, color: Int): MutableMap<Int, Int> {
+        return castRay(square, color, pawnThreatRayInstructions)
+    }
+    private fun castSliderThreatRay(square: Int, color: Int): MutableMap<Int, Int> {
+        return castRay(square,color, sliderThreatRayInstructions)
+    }
+    private fun castKnightThreatRay(square: Int, color: Int): MutableMap<Int, Int> {
+        return castRay(square, color, knightThreatRayInstructions)
+    }
+
+
+
 
 
     fun getAllPieces(color: Int): Map<Int, Piece> {
@@ -372,7 +486,7 @@ class MoveGenerator(board: Board) {
         moveInfo: MovementInfo,
         moveFilter:  (Int, Int, Int) -> Boolean,
         specialCondition: Int = -1,
-        holder: IntHolder,
+        holder: Holder<Int>,
     ): Sequence<Int> = sequence {
         for (vector in moveInfo.getVectors()) {
             val tracker = mutableSetOf<Int>()
@@ -398,6 +512,7 @@ class MoveGenerator(board: Board) {
                     }
                     ILLEGAL_CAPTURES -> if (targetPiece.isColor(color)) {
                         yield(newSquare)
+                        if (sliderMatchesVector(targetPiece, vector)) continue
                     } else if (targetPiece.isKing()) continue
                 }
 
@@ -447,18 +562,19 @@ class MoveGenerator(board: Board) {
         return validSquares
     }
 
-    private fun doesCrawlerWrap(origin: Int, endSquare: Int): Boolean = ((colDistance(origin, endSquare) > 2))
+
     private fun doesSliderCrawlerWrap(origin: Int, endSquare: Int, pastSquare: Int): Boolean =
-        (isOnEdge(origin) && isOnEdge(endSquare) && doesCrawlerWrap(pastSquare, endSquare)
+        (isOnEdge(origin) && isOnEdge(endSquare) && doesNotWrap(pastSquare, endSquare)
                 || !isOnEdge(origin) && isOnEdge(endSquare) && isOnEdge(pastSquare))
 
     private fun isValidSliderMove(origin: Int, endSquare: Int, pastSquare: Int): Boolean {
         return isInBounds(endSquare) && !doesSliderCrawlerWrap(origin, endSquare, pastSquare)
     }
     private fun isValidLeaperMove(origin: Int, endSquare: Int, color: Int,): Boolean {
-        return isInBounds(endSquare) &&  (!doesCrawlerWrap(origin, endSquare)
+        return isInBounds(endSquare) &&  (doesNotWrap(origin, endSquare)
                 && (collisionIsCapture(endSquare, color) || isEmptySquare(endSquare)))
     }
+
 
     private fun moveHasDoubleColor(origin: Int, endSquare: Int, pastSquare: Int): Boolean {
         return (getPiece(pastSquare).isTeamedWith(getPiece(endSquare))) && (pastSquare != origin)
@@ -475,7 +591,10 @@ class MoveGenerator(board: Board) {
     private fun isValidPawnCapture(origin: Int, endSquare: Int, color: Int,): Boolean {
         if (getPiece(origin).isEmpty()) return false
         return collisionIsCapture(endSquare, color)
-                && !doesCrawlerWrap(origin, endSquare) && isDiagonalMove(origin, endSquare)
+                && (endSquare - origin).sign == getPawnDirection(color)
+                && doesNotWrap(origin, endSquare)
+                && isDiagonalMove(origin, endSquare)
+
     }
     private fun isEnpassantCapture(square: Int, color: Int): Boolean {
         return getSquareBehind(square, color) == referenceBoard.fetchEnpassantSquare()
@@ -538,16 +657,17 @@ class MoveGenerator(board: Board) {
     private fun isInBounds(square: Int): Boolean {
         return !(square > BOARD_SIZE || square < 0)
     }
+
     fun getCheckedKing(color: Int): Int {
         kingSquareHolder.hold(-1)
         val kingSquare = referenceBoard.getKingPosition(color)
         if (kingSquare != null) {
-            val kingDefendingSquares = castThreatRay(kingSquare, getPiece(kingSquare).fetchColor())
+            val kingDefendingSquares = castThreatRay(kingSquare, color)
             if (kingDefendingSquares.isNotEmpty()) {
                 kingSquareHolder.hold(kingSquare)
             }
         }
-        return kingSquareHolder.retrieve()
+        return kingSquareHolder.show() ?: -1
 
     }
 
