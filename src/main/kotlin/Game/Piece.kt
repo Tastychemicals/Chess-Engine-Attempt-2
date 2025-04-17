@@ -49,6 +49,15 @@ value class Piece(val bitCode: UInt = 0u) {
 
     fun moveThisPiece(): Piece = if (hasMoved) this else Piece(bitCode xor MOVED_SELECTOR)
 
+    fun promoteTo(type: Int): Piece {
+        require(isPawn() && isPromoteOption(type)) {"This piece is ${typeNames[this.type]}, and cannot promote to ${typeNames[type]}."}
+        return Piece(pieceCode(color, type) xor MOVED_SELECTOR)
+    }
+
+    private fun isPromoteOption(type: Int): Boolean = when (type) {
+        QUEEN, KNIGHT, ROOK, BISHOP -> true
+        else -> false
+    }
     private fun getProperty(selector: UInt, shift: Int): Int = ((bitCode and selector) shr shift).toInt()
 
 

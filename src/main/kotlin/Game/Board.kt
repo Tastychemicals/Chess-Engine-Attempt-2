@@ -1,8 +1,6 @@
 package Game
 import BoardUtils.*
 
-import player.MoveGenerator
-
 
 @JvmInline
 value class BitBoard(val board: ULong)
@@ -129,34 +127,42 @@ class Board {
      */
 
     fun makeMove(origin: Int, endSquare: Int): Boolean {
-        if (isInBounds(origin) && isInBounds(endSquare)) {
-            val movingPiece = pieces[origin]
-            if (!movingPiece.isEmpty() && origin != endSquare) {
-                    val validMoves = generateMoves(movingPiece.color)
-                    if (validMoves[origin]?.contains(endSquare) == true ) {
-                        removePiece(origin)
+        require(isInBounds(origin) && isInBounds(endSquare)) {"Impossible move: $origin -> $endSquare"}
+        val movingPiece = pieces[origin]
+        if (!movingPiece.isEmpty() && origin != endSquare) {
+            val validMoves = generateMoves(movingPiece.color)
+            if (validMoves[origin]?.contains(endSquare) == true ) {
 
 
-                        if (isEnpassantMove(movingPiece, origin, endSquare)) {
-                            removePiece(getSquareBehind(endSquare, movingPiece.color))
-                        } else if (isCastleMove(movingPiece, origin, endSquare)) {
-                            makeMove(getAdjacentRookSquare(endSquare), rookDestinationHolder.drop() ?: -1)
-                        }
-                        else removePiece(endSquare)
+                handleMoveTypes(movingPiece, origin, endSquare)
 
-                        addPiece(movingPiece.moveThisPiece(), endSquare)
 
-                        updateEnpassantSquare(origin, endSquare, movingPiece)
-                        println(enpassantSquare)
 
-                        lastMove = Pair(origin,endSquare)
-                        return true
+                lastMove = Pair(origin,endSquare)
+                return true
                     }
             }
-        }
+
         return false
 
     }
+
+    private fun handleMoveTypes(movingPiece: Piece, origin: Int, endSquare: Int) {
+        removePiece(origin)
+        removePiece(endSquare)
+
+        if (isEnpassantMove(movingPiece, origin, endSquare)) {
+            removePiece(getSquareBehind(endSquare, movingPiece.color))
+        } else if (isCastleMove(movingPiece, origin, endSquare)) {
+            makeMove(getAdjacentRookSquare(endSquare), rookDestinationHolder.drop() ?: -1)
+        }
+        if (isPromotionMove(movingPiece, endSquare))
+            addPiece(movingPiece.promoteTo(QUEEN), endSquare) else addPiece(movingPiece.moveThisPiece(), endSquare)
+
+
+        updateEnpassantSquare(origin, endSquare, movingPiece)
+    }
+
     private fun getAdjacentRookSquare(origin: Int): Int {
         val shortSquare = origin + 1
         val longSquare = origin - 2
@@ -183,20 +189,20 @@ class Board {
             null
         }
     }
-    private fun isSpecialMove(piece: Piece, origin: Int, endSquare: Int) {
-
-    }
 
     private fun isCastleMove(piece: Piece, origin: Int, endSquare: Int): Boolean {
         return piece.isKing() &&  colDistance(origin, endSquare) == CASTLE_MOVE_DISTANCE
     }
-
-
     private fun isEnpassantMove(piece: Piece, origin: Int, endSquare: Int): Boolean {
         return piece.isPawn()
+                && enpassantSquare != null
                 && isOnDiffRow(origin, endSquare)
                 && isOnDiffCol(origin, endSquare)
                 && fetchPiece(endSquare).isEmpty()
+
+    }
+    private fun isPromotionMove(piece: Piece, endSquare: Int): Boolean {
+        return piece.isPawn() && isOnBack(endSquare)
     }
 
     fun fetchEnpassantSquare(): Int? {

@@ -38,6 +38,7 @@ val typeNames = arrayOf(
     "KING",
 )
 
+
 fun convertPairToIntSquare(square: Pair<Int,Int>): Int {
     val x = square.first
     val y = square.second
@@ -61,6 +62,12 @@ fun isOnDiffRow(origin: Int, endSquare: Int): Boolean {
 }
 fun isOnDiffCol(origin: Int, endSquare: Int): Boolean {
     return colDistance(origin, endSquare) != 0
+}
+
+fun isOnSide(square: Int): Boolean = (square % 8 == 0 || square % 8 == 7)
+fun isOnBack(square: Int): Boolean {
+    val yPos = convertIntToPairSquare(square).second
+    return yPos % 8 == 0 || yPos % 8 == 7
 }
 
 fun doesWrap(origin: Int, endSquare: Int): Boolean = ((colDistance(origin, endSquare) > 2))
