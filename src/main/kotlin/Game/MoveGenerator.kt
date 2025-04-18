@@ -80,9 +80,10 @@ class MoveGenerator(board: Board) {
      */
 
 
-    val NORMAL_RAY = 0     // returns squares, mapped to themselves
+    val NORMAL_RAY = 0     // returns squares, mapped to themselves (returns after trigger is found once)
     val MAPPING_RAY = 1    // returns squares, mapped to whatever the map function is
     val CASTLE_RAY = 2     // returns the list of squares if they satisfy castling requirements. (not very useful)
+    val CUMULATIVE_RAY = 3 // same as normal, but triggers after
 
     //------------------------------------------------------------------------------------------------------------------
     /**
@@ -160,6 +161,7 @@ class MoveGenerator(board: Board) {
     private var kingDefendingSquares = mutableMapOf<Int,Int>()
     private var pins = mutableMapOf<Int,Int>()
     private var attackedKing = -1
+    private var kingSquare: Int? = null
 
 
     var raysCasted = 0
@@ -249,59 +251,58 @@ class MoveGenerator(board: Board) {
      */
     fun genAllLegalMoves(color: Int): HashMap<Int,MutableSet<Int>> {
         val allMoves = HashMap<Int,MutableSet<Int>>()
+        var totalMoves = 0
         val start = measureNanoTime {
 
         val squaresAndPieces = getAllPieces(color)
-        val kingSquare = getKingSquare(color)
-        if (kingSquare == null) throw IllegalArgumentException("$color King does not exist")
+        kingSquare = getKingSquare(color)
+        require (kingSquare != null) {"$color King does not exist"}
         raysCasted = 0
-
-
-               pins = castPinRay(kingSquare, color)
-               kingDefendingSquares = castThreatRay(kingSquare, color)
-               enemyAttackSquares = getOpponentAttackSquares(color)
-               attackedKing = getCheckedKing(color)
+        pins = castPinRay(kingSquare!!, color)
+        enemyAttackSquares = getOpponentAttackSquares(color)
+            println(enemyAttackSquares)
+        kingDefendingSquares = castThreatRay(kingSquare!!, color)
+        attackedKing = getCheckedKing(color)
 
 
         for (squareAndPiece in squaresAndPieces) {
-            allMoves.put(squareAndPiece.key, genLegalPieceMoves(squareAndPiece))
+            val moves = genLegalPieceMoves(squareAndPiece)
+            allMoves.put(squareAndPiece.key, moves)
+            totalMoves += moves.size
         }
 
-//        for (move in allMoves) {
-//            println(move)
-//        }
         }
         println("rays casted on iteration: $raysCasted with a time of: ${start/1_000.0}micros")
+        println("Total moves found: $totalMoves")
         return allMoves
     }
 
 
-
-
     // for generating actual moves, moves which will be reported in game
-    private fun genLegalPieceMoves(squareAndPiece:  Map.Entry<Int, Piece>): MutableSet<Int> {
-        val piece = squareAndPiece.value
-        val square = squareAndPiece.key
-        return genLegalPieceMoves(square, piece)
+    private fun genLegalPieceMoves(squareAndPiece:  Map.Entry<Int, Piece>?): MutableSet<Int> {
+        require(squareAndPiece != null) {}
+            val piece = squareAndPiece.value
+            val square = squareAndPiece.key
+            return genLegalPieceMoves(square, piece)
     }
     fun genLegalPieceMoves(square: Int, piece: Piece): MutableSet<Int> {
         var moves = genPseudoPieceMoves(square, piece)
 
         if (piece.isKing()) {
 
-            validateKingMoves(piece.color, square, moves)
+            validateKingMoves(moves)
             if (!piece.hasMoved && attackedKing != square) addCastleMoves(piece.color, square, moves)
 
 
         }else  {
             moves = filterOutPins(square, moves, pins)
-            moves = filterDefense(moves, kingDefendingSquares.keys)
+            moves = filterKingDefense(square, moves)
         }
 
         return moves
     }
 
-    private fun validateKingMoves(color: Int, square: Int, moves: MutableSet<Int>): MutableSet<Int> {
+    private fun validateKingMoves(moves: MutableSet<Int>): MutableSet<Int> {
         moves.removeAll(enemyAttackSquares.keys)
         return moves
     }
@@ -317,12 +318,21 @@ class MoveGenerator(board: Board) {
         }
         return moves
     }
+    private fun filterKingDefense(square: Int, moves: MutableSet<Int>): MutableSet<Int> {
+        if (enemyAttackSquares.keys.contains(kingSquare)) {
+            if ((enemyAttackSquares[kingSquare] as Int) > 1) return mutableSetOf()
+
+        }
+        return filterDefense(moves, kingDefendingSquares.keys)
+    }
     private fun filterDefense(moves: MutableSet<Int>, defendingSquares: MutableSet<Int>): MutableSet<Int> {
         if (defendingSquares.isNotEmpty()) {
             return moves.filter {  it in defendingSquares }.toMutableSet()
         }
         return moves
     }
+
+
 
 
     // for generating potential move squares, ignoring check
@@ -411,6 +421,7 @@ class MoveGenerator(board: Board) {
                         found.put(startSquare, startSquare)
                         break
                     }
+
                     CASTLE_RAY -> {
                         if (alerts.size != distance && alerts.size == 2 && alerts.all { it !in enemyAttackSquares.keys}) {
                             found.putAll(format(alerts))
@@ -455,16 +466,6 @@ class MoveGenerator(board: Board) {
     }
 
 
-    fun getAllPieces(color: Int): Map<Int, Piece> {
-        return referenceBoard.piecePositions.filter { it.value.color == color && !it.value.isEmpty() }
-    }
-
-
-
-    fun setReferenceBoard(board: Board) {
-        referenceBoard = board
-    }
-
 
     private fun getMoves(startSquare: Int, piece: Piece): MutableSet<Int> {
         val foundMoves = mutableSetOf<Int>()
@@ -506,7 +507,10 @@ class MoveGenerator(board: Board) {
                     ILLEGAL_CAPTURES -> if (targetPiece.isColor(color)) {
                         yield(newSquare)
                         if (sliderMatchesVector(targetPiece, vector)) continue
-                    } else if (targetPiece.isKing()) continue
+                    } else if (targetPiece.isKing()) {
+                        yield(newSquare)
+                        continue
+                    }
                 }
 
                 if (targetPiece.isOccupied()) {
@@ -541,7 +545,7 @@ class MoveGenerator(board: Board) {
                 validSquares.add(newSquare)
             }
 
-            if (isForwardVector(vector) && isEmptySquare(newSquare)) {
+            if (isVerticalVector(vector) && isEmptySquare(newSquare)) {
                 if (rowDistance(startSquare, newSquare) == 1) {
                     canJump = true
                     validSquares.add(newSquare)
@@ -554,6 +558,9 @@ class MoveGenerator(board: Board) {
         }
         return validSquares
     }
+
+
+
 
 
     private fun doesSliderCrawlerWrap(origin: Int, endSquare: Int, pastSquare: Int): Boolean =
@@ -594,8 +601,6 @@ class MoveGenerator(board: Board) {
     }
 
 
-
-
     private fun isDiagonalVector(vector: Int): Boolean {
         return abs(vector) == 7 || abs(vector) == 9
     }
@@ -606,7 +611,7 @@ class MoveGenerator(board: Board) {
     private fun isKnightVector(vector: Int): Boolean {
         return abs(vector) == 6 || abs(vector) == 10 || abs(vector) == 15 || abs(vector) == 17
     }
-    private fun isForwardVector(vector: Int): Boolean {
+    private fun isVerticalVector(vector: Int): Boolean {
         return abs(vector) % BOARD_WIDTH == 0;
     }
 
@@ -654,14 +659,21 @@ class MoveGenerator(board: Board) {
     fun getCheckedKing(color: Int): Int {
         kingSquareHolder.hold(-1)
         val kingSquare = referenceBoard.getKingPosition(color)
-        if (kingSquare != null) {
+        require(kingSquare != null) {"King Square cannot be null."}
             val kingDefendingSquares = castThreatRay(kingSquare, color)
             if (kingDefendingSquares.isNotEmpty()) {
                 kingSquareHolder.hold(kingSquare)
             }
-        }
+
         return kingSquareHolder.show() ?: -1
 
+    }
+
+    private fun getAllPieces(color: Int = NO_COLOR): MutableMap<Int, Piece> {
+        return referenceBoard.fetchPieces(color)
+    }
+    fun setReferenceBoard(board: Board) {
+        referenceBoard = board
     }
 
     // todo: fix board rendering and update structures to use pieces and bit boards

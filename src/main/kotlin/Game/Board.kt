@@ -19,7 +19,7 @@ class Board {
     public val moveGenerator: MoveGenerator
     private var allTypeBitBoards: Array<BitBoard>
     private var pieces: Array<Piece>
-     var piecePositions: MutableMap<Int, Piece>
+     var positionsAndPieces: MutableMap<Int, Piece>
     private var validMoves: HashMap<Int, Set<Int>>
 
     var lastMove: Pair<Int,Int>
@@ -30,7 +30,7 @@ class Board {
         this.controller = controller // each board object created gets a permanent Game.Game object
         this.allTypeBitBoards = initializeBitboards()
         this.pieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
-        this.piecePositions = pieces.withIndex().associate { (square, piece) -> (square to piece) }.toMutableMap()
+        this.positionsAndPieces = pieces.withIndex().associate { (square, piece) -> (square to piece) }.toMutableMap()
         this.lastMove = Pair(-1,-1)
         this.validMoves = HashMap<Int, Set<Int>>()
         enpassantSquare = null
@@ -64,7 +64,7 @@ class Board {
         for (square in 0.until(BOARD_SIZE)) {
             val piece = getPieceFromFen(digestibleBoard[square])
             pieces[square] = piece
-            piecePositions[square] = piece
+            positionsAndPieces[square] = piece
             if (piece.isKing()) {
                 updateKingPosition(piece.color, square)
             }
@@ -78,7 +78,7 @@ class Board {
     fun clearBoard(): Boolean {
         allTypeBitBoards = initializeBitboards()
         pieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
-        piecePositions.clear()
+        positionsAndPieces.clear()
        // piecePositions = pieces.withIndex().associate { (square, piece) -> (square to piece) }.toMutableMap()
         return true
     }
@@ -92,7 +92,7 @@ class Board {
         if (isInBounds(square) && !piece.isEmpty()) {
             if (pieces[square].isEmpty()) {
                 pieces[square] = piece
-                piecePositions[square] = piece
+                positionsAndPieces[square] = piece
                 if (piece.isKing()) {
                     updateKingPosition(piece.color, square)
                 }
@@ -101,7 +101,6 @@ class Board {
         }
         return false
     }
-
     fun addPiece(color: Int, type: Int, squarePosition: Int): Boolean {
         if (isInBounds(squarePosition) && type != EMPTY) {
             return addPiece(Piece(pieceCode(color, type)), squarePosition)
@@ -116,7 +115,7 @@ class Board {
     fun removePiece(squarePosition: Int): Boolean {
         if (squarePosition in 0.until(BOARD_SIZE)){
             pieces[squarePosition] = EMPTY_SQUARE
-            piecePositions[squarePosition] = EMPTY_SQUARE
+            positionsAndPieces[squarePosition] = EMPTY_SQUARE
         }
         return false
     }
@@ -215,7 +214,7 @@ class Board {
                 controller.changeTurn()
             }
         }
-    }
+    } // move out of class
 
     fun generateMoves(color: Int): HashMap<Int, MutableSet<Int>> {
         return moveGenerator.genAllLegalMoves(color)
@@ -224,11 +223,21 @@ class Board {
     /**
      * @return an array containing each piece Bit Game.Board.
      */
-    fun fetchAllPieces(): Array<Piece> {
-        return pieces.copyOf()
+
+    fun fetchPieces(color: Int = NO_COLOR): MutableMap<Int, Piece> {
+        return buildMap {
+            for ((square, piece) in pieces.withIndex()) {
+                if (piece.isEmpty()) continue
+                if (color == NO_COLOR || piece.isColor(color)) {
+                    put(square, piece)
+                }
+            }
+        }.toMutableMap()
     }
 
     fun fetchPiece(squarePosition: Int): Piece {
+
+
         if (isInBounds(squarePosition)) {
             return pieces[squarePosition]
         }

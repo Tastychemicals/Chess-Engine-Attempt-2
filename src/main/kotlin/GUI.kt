@@ -164,15 +164,15 @@ class GUI : Application() {
 
         //todo: implement Pieces here
     fun renderPieces() {
-        val pieces = game.board.fetchAllPieces()
+        val pieces = game.board.fetchPieces()
         var s = 0;
 
         for (piece in pieces) {
-            val position = convertIntToPairSquare(s)
+            val position = convertIntToPairSquare(piece.key)
            // val x = position.first
            // val y = position.second
-            if (s != clickedSquare) {
-                drawPiece(piece, position)
+            if (piece.key != clickedSquare) {
+                drawPiece(piece.value, position)
             }
             s++
         }

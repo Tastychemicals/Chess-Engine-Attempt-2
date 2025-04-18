@@ -65,7 +65,7 @@ class Visualizer {
         heatMask.clear()
         checkedKingMask = display.board.moveGenerator.getCheckedKing(display.turn)
         heatMask = display.board.moveGenerator.enemyAttackSquares
-        val pieces = display.board.fetchAllPieces()
+        val pieces = display.board.fetchPieces().values.toList()
 
         for (square in 0.until(BOARD_SIZE)) {
             for (filter in Filters) {
