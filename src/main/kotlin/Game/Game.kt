@@ -1,5 +1,6 @@
 package Game
 
+import BoardUtils.BLACK
 import kotlin.random.Random
 
 
@@ -31,8 +32,12 @@ class Game {
         }
        // println("Player.Player 1 color:" + player1color)
         //println("Player.Player 2 color:" + player2color)
+
         board.loadBoard(fen)
         println("new game started")
+
+        repeat(1000) {board.moveGenerator.genAllLegalMoves(BLACK)}
+        repeat(5) {board.moveGenerator.benchmarkMovegen()}
         return true
     }
 

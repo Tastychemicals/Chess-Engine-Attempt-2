@@ -212,8 +212,8 @@ class GUI : Application() {
                 paintBrush.fill = Color.web("#F5E000",0.31)
                 drawSquare(square) //
             }
-            if (s in visualizer.heatMask.keys) {
-                for (occurence in 0..visualizer.heatMask[s] as Int) {
+            if (visualizer.heatMask[s] > 0) {
+                for (occurence in 0..visualizer.heatMask[s]) {
                     paintBrush.fill = Color.web("d10000",0.05)
                     drawSquare(square) //
                 }
