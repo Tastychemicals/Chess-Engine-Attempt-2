@@ -14,13 +14,12 @@ class Board {
     private var whiteKingPostion: Int? = null
     private var blackKingPostion: Int? = null
 
-
     private val controller: Game
     public val moveGenerator: MoveGenerator
     private var allTypeBitBoards: Array<BitBoard>
     private var pieces: Array<Piece>
      var positionsAndPieces: MutableMap<Int, Piece>
-    private var validMoves: HashMap<Int, Set<Int>>
+
 
     var lastMove: Pair<Int,Int>
     private val rookDestinationHolder = Holder<Int>()
@@ -32,7 +31,6 @@ class Board {
         this.pieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
         this.positionsAndPieces = pieces.withIndex().associate { (square, piece) -> (square to piece) }.toMutableMap()
         this.lastMove = Pair(-1,-1)
-        this.validMoves = HashMap<Int, Set<Int>>()
         enpassantSquare = null
     }
 

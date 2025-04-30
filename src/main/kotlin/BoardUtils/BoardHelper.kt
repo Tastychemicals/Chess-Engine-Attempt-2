@@ -4,10 +4,16 @@ import UI.Parser.Companion.pieceColors
 import UI.Parser.Companion.pieceTypes
 import kotlin.math.abs
 import kotlin.random.Random
-
+typealias move = Int
+// ---------- Board ----------
 const val BOARD_SIZE = 64
 const val BOARD_WIDTH = BOARD_SIZE / 8
 const val SQUARE_DIMENSION = 67.5
+// -----------------------------
+
+
+
+// ---------- Pieces ----------
 
 const val EMPTY = 0
 const val PAWN = 1;
@@ -27,7 +33,6 @@ const val TYPE_SELECTOR: UInt =     0b0000000111u
 
 const val CASTLE_MOVE_DISTANCE = 2
 
-
 val typeNames = arrayOf(
     "EMPTY",
     "PAWN",
@@ -37,6 +42,96 @@ val typeNames = arrayOf(
     "QUEEN",
     "KING",
 )
+
+fun pieceCode(color: Int, type: Int): UInt {
+    val bitCode = 0u shl 1 or                   // hasMoved : 4 bits deep
+            convertToBinary(color) shl 3 or     // color    : 3 bits deep
+            convertToBinary(type)               // type     : 1 bit deep
+    return bitCode
+}
+// -----------------------------
+
+// ---------- Moves ----------
+object Move {
+    fun encode(startSquare: Int, endSquare: Int, flags: Int = 0): move {
+        return  (startSquare shl START_SQUARE_BIT) or (endSquare shl END_SQUARE_BIT) or  (flags shl FLAGS_BIT)
+
+    }
+    fun getStart(move: move): Int {
+        return (move and START_SQUARE_SELECTOR) shr START_SQUARE_BIT
+    }
+    fun getEnd(move: move): Int {
+        return (move and END_SQUARE_SELECTOR) shr END_SQUARE_BIT
+    }
+    fun getFlags(move: move): Int {
+        return (move and FLAGS_SELECTOR) shr FLAGS_BIT
+    }
+    fun encodeFlags(
+        capture: Boolean = false,
+        castle: Boolean = false,
+        check: Boolean = false,
+        checkmate: Boolean = false,
+        promotion: Boolean = false,
+        enpassant: Boolean = false
+    ): Int {
+        return ((if (capture) 1 else 0) shl CAPTURE_BIT) or
+                ((if (castle) 1 else 0) shl CASTLE_BIT) or
+                ((if (check) 1 else 0) shl CHECK_BIT) or
+                ((if (checkmate) 1 else 0) shl CHECKMATE_BIT) or
+                ((if (promotion) 1 else 0) shl PROMOTION_BIT) or
+                ((if (enpassant) 1 else 0) shl ENPASSANT_BIT)
+    }
+    fun isCapture (move: move): Boolean {
+        return getFlags(move) and CAPTURE_FLAG != 0
+    }
+    fun isCastle (move: move): Boolean {
+        return getFlags(move) and CASTLE_FLAG != 0
+    }
+    fun isCheck (move: move): Boolean {
+        return getFlags(move) and CHECK_FLAG != 0
+    }
+    fun isCheckMate (move: move): Boolean {
+        return getFlags(move) and CHECKMATE_FLAG != 0
+    }
+    fun isPromotion (move: move): Boolean {
+        return getFlags(move) and PROMOTION_FLAG != 0
+    }
+    fun isEnPassant(move: move): Boolean {
+        return getFlags(move) and ENPASSANT_FLAG != 0
+    }
+    fun isQuiet(move: move): Boolean {
+        return getFlags(move) and (CAPTURE_FLAG or PROMOTION_FLAG or CASTLE_FLAG or ENPASSANT_FLAG) == 0
+    }
+
+    private const val START_SQUARE_BIT = 0
+    private const val END_SQUARE_BIT = 6
+    private const val FLAGS_BIT = 12
+
+    private const val START_SQUARE_SELECTOR =   0b000000000000111111
+    private const val END_SQUARE_SELECTOR =     0b000000111111000000
+    private const val FLAGS_SELECTOR =          0b111111000000000000
+
+    // 000000 000000 000000
+
+    private const val CAPTURE_BIT = 0
+    private const val CASTLE_BIT = 1
+    private const val CHECK_BIT = 2
+    private const val CHECKMATE_BIT = 3
+    private const val PROMOTION_BIT = 4
+    private const val ENPASSANT_BIT = 5
+
+    private const val CAPTURE_FLAG =    1 shl CAPTURE_BIT         // 0b0000000001
+    private const val CASTLE_FLAG =     1 shl CASTLE_BIT          // 0b0000000010
+    private const val CHECK_FLAG =      1 shl CHECK_BIT           // 0b0000000100
+    private const val CHECKMATE_FLAG =  1 shl CHECKMATE_BIT       // 0b0000001000
+    private const val PROMOTION_FLAG =  1 shl PROMOTION_BIT       // 0b0000010000
+    private const val ENPASSANT_FLAG =  1 shl ENPASSANT_BIT       // 0b0000100000
+
+}
+
+
+
+
 
 
 fun convertPairToIntSquare(square: Pair<Int,Int>): Int {
@@ -85,18 +180,13 @@ fun getOppositeColor(color: Int): Int {
     }
 }
 
- fun getPawnDirection(color: Int): Int = when (color) {
+fun getPawnDirection(color: Int): Int = when (color) {
      BLACK -> 1
      WHITE -> -1
      else -> 0
 }
 
-fun pieceCode(color: Int, type: Int): UInt {
-    val bitCode = 0u shl 1 or                   // hasMoved : 4 bits deep
-            convertToBinary(color) shl 3 or     // color    : 3 bits deep
-            convertToBinary(type)               // type     : 1 bit deep
-    return bitCode
-}
+
 
 
 fun convertToBinary(number: Int): UInt {

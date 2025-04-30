@@ -36,8 +36,10 @@ class Game {
         board.loadBoard(fen)
         println("new game started")
 
-        repeat(1000) {board.moveGenerator.genAllLegalMoves(BLACK)}
-        repeat(5) {board.moveGenerator.benchmarkMovegen()}
+        //repeat(1000) {board.moveGenerator.genAllLegalMoves(BLACK)}
+       repeat(5) {board.moveGenerator.benchmarkMovegen()}
+
+
         return true
     }
 
