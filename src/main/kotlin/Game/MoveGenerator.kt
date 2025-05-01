@@ -445,10 +445,11 @@ class MoveGenerator(board: Board) {
     // gets the sum of all pseudo attack squares of the color's opponent (for king safety check)
     fun getOpponentAttackSquares(color: Int): IntArray {
         val attackMap = IntArray(64)  // way faster than mutableMap
-        val pieces = getAllPieces(getOppositeColor(color))
+        val enemyColor = getOppositeColor(color)
+        val pieces = getAllPieces(enemyColor)
         //println("${referenceBoard.fetchPieces(getOppositeColor(color)).joinToString()}, ->  ${colorsNames[getOppositeColor(color)]} ")
         for (square in pieces.indices) {
-            val piece = getPiece(square, color)
+            val piece = getPiece(square, enemyColor)
             if (piece.isOccupied()) {
                 val attackMasks = if (piece.isPawn()) {
                     crawlPawnMoves(square, piece, ILLEGAL_CAPTURES, onlyCaptures = true)
