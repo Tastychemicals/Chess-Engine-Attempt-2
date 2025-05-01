@@ -37,7 +37,7 @@ class Game {
         println("new game started")
 
         //repeat(1000) {board.moveGenerator.genAllLegalMoves(BLACK)}
-       repeat(5) {board.moveGenerator.benchmarkMovegen()}
+        //repeat(10) {board.moveGenerator.benchmarkMovegen()}
 
 
         return true

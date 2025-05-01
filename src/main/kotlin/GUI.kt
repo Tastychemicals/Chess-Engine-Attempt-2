@@ -116,11 +116,9 @@ class GUI : Application() {
         val refreshRate = object : AnimationTimer() {
             private var lastUpdate = 0L
             override fun handle(now: Long) {
-                if (now - lastUpdate >= 10_000_000) {
+                if (now - lastUpdate >= 20_000_000) {
                     lastUpdate = now
-                    Platform.runLater {
-                        refreshBoard()
-                    }
+                    refreshBoard()
                 }
             }
         }
@@ -167,12 +165,12 @@ class GUI : Application() {
         val pieces = game.board.fetchPieces()
         var s = 0;
 
-        for (piece in pieces) {
-            val position = convertIntToPairSquare(piece.key)
+        for (square in 0.until(pieces.size)) {
+            val position = convertIntToPairSquare(square)
            // val x = position.first
            // val y = position.second
-            if (piece.key != clickedSquare) {
-                drawPiece(piece.value, position)
+            if (square != clickedSquare) {
+                drawPiece(game.board.fetchPiece(square), position)
             }
             s++
         }
@@ -306,7 +304,7 @@ class GUI : Application() {
                 if (x >= it.first + offset && x < it.first + SQUARE_DIMENSION - offset &&
                     y >= it.second + offset && y < it.second + SQUARE_DIMENSION - offset) {
                     return Pair(
-                        (it.first / SQUARE_DIMENSION).toInt(),
+                        7 - (it.first / SQUARE_DIMENSION).toInt(),
                         (it.second / SQUARE_DIMENSION).toInt())
                 }
             }

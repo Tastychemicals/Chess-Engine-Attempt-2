@@ -98,16 +98,12 @@ class MoveGenerator(board: Board) {
     val pieceIsEnemyCondition: alertCondition = {color: Int, _, _, piece: Piece -> piece.isOccupied() && !piece.isColor(color)}
     val castlingCondition: alertCondition = {color: Int, square: Int, distance, piece: Piece ->
 
-        (piece.isColor(color)   &&     // must be team
-            piece.isRook() && piece.hasMoved) ||
-                                                        // add you because the size of the alerts will be too large
-                (!piece.isColor(color) && piece.isEmpty() && distance <= KING_CASTLE_DISTANCE) ||
-
-                        piece.isOccupied() && !piece.isRook()
+        (piece.isColor(color)  // must be team
+                && piece.isRook() && piece.hasMoved) // add you because the size of the alerts will be too large
+                || (!piece.isColor(color) && piece.isEmpty() && distance <= KING_CASTLE_DISTANCE)
+                || piece.isOccupied() && !piece.isRook()
 
     }
-
-
 
     val pieceIsPawnCondition: alertCondition = {color: Int, _, _, piece: Piece -> pieceIsEnemyCondition(color, NO_PARAM, NO_PARAM, piece) && piece.isPawn()}
     val pieceIsKnightCondition: alertCondition = {color: Int, _, _, piece: Piece ->  pieceIsEnemyCondition(color, NO_PARAM, NO_PARAM, piece) && piece.isKnight()}
@@ -130,20 +126,6 @@ class MoveGenerator(board: Board) {
      *                                  Ray trail Info (What should the trail add?)
      */
     val vectorTrailInfo: mappingInfo = { currentSquare: Int, distance: Int, vector: Int  -> vector}
-//    val castlingTrailInfo: mappingInfo = { currentSquare: Int, distance: Int, instructions: MoveInstructions  ->
-//        if (getPiece(currentSquare).isRook()) {
-//            if (getPiece(currentSquare).hasMoved) {
-//                currentSquare
-//            }
-//            -1
-//        } else {
-//            if ((currentSquare !in enemyAttackSquares) && distance < 3) {
-//                currentSquare
-//            }
-//            -1
-//        }
-//    }
-//    val noTrailInfo: mappingInfo = { currentSquare: Int, distance: Int, instructions: MoveInstructions  -> -1}
     //------------------------------------------------------------------------------------------------------------------
     /**
                                     Ray Instructions (how should the ray cast?)
@@ -155,14 +137,20 @@ class MoveGenerator(board: Board) {
     val castlingRayInstructions = RayInstructions(castlingInstructions, castlingCondition, collisionFoundTrigger, CASTLE_RAY)
     //------------------------------------------------------------------------------------------------------------------
 
-
     private var referenceBoard = board
+
+
      var enemyAttackSquares = IntArray(64)
-    private var kingDefendingSquares = mutableMapOf<Int,Int>()
-    private var pins = mutableMapOf<Int,Int>()
+    var enemyAttackBitBoard = 0L
     private var attackedKing = -1
     private var kingSquare: Int? = null
 
+
+    private var kingDefendingSquares = mutableMapOf<Int,Int>()
+    private var pins = mutableMapOf<Int,Int>()
+    private var moveBuffer = IntArray(265)
+    private var moveCount = 0
+    private var moveFlags = 0
 
     var raysCasted = 0
 
@@ -172,19 +160,7 @@ class MoveGenerator(board: Board) {
         val moveInfo: MovementInfo,
         val moveFilter: MoveFilter,
         val specialCondition: Int = -1,
-        private val holder: Holder<Int> = Holder()
-    ) {
-        fun retrieve(): Int {
-            return holder.show() ?: 0
-        }
-        fun holder(): Holder<Int> {
-            return holder
-        }
-        fun valueChanged(): Boolean {
-            return holder.hasValueChanged()
-        }
-    }
-
+    )
     data class RayInstructions(
         val moveInstructions: MoveInstructions,
         val alertCondition: alertCondition,
@@ -212,7 +188,6 @@ class MoveGenerator(board: Board) {
         fun getVectors(): List<Int> = vectors
 
     }
-
 
     private fun getMovementInfo(pieceType: Int): MovementInfo {
         return when (pieceType) {
@@ -246,35 +221,84 @@ class MoveGenerator(board: Board) {
     }
 
 
+    private fun IntArray.clear() {
+        moveBuffer.fill(0)
+        moveCount = 0
+    }
+    private fun addMove(move: move) {
+        moveBuffer[moveCount++] = move
+    }
+    private fun remove() {
+
+    }
+
+
     /**
      * the main outlet called in board
      */
-    fun genAllLegalMoves(color: Int): HashMap<Int,MutableSet<Int>> {
-        val allMoves = HashMap<Int,MutableSet<Int>>()
+    fun genAllLegalMoves(color: Int): IntArray {
+        //val allMoves = HashMap<Int,MutableSet<Int>>()
+        moveBuffer.clear()
         var totalMoves = 0
         //val start = measureNanoTime {
 
-        val squaresAndPieces = getAllPieces(color)
+        val pieces = getAllPieces(color)
         kingSquare = getKingSquare(color)
         require (kingSquare != null) {"$color King does not exist"}
         raysCasted = 0
+
         pins = castPinRay(kingSquare!!, color)
         enemyAttackSquares = getOpponentAttackSquares(color)
-           // println(enemyAttackSquares)
         kingDefendingSquares = castThreatRay(kingSquare!!, color)
         attackedKing = getCheckedKing(color)
 
 
-        for (squareAndPiece in squaresAndPieces) {
-            val moves = genLegalPieceMoves(squareAndPiece)
-            allMoves.put(squareAndPiece.key, moves)
-            totalMoves += moves.size
-        }
+        for (square in pieces.indices) {
+            val piece = getPiece(square, color)
+            if (piece.isEmpty()) continue
+            var moves: Long = genLegalPieceMoves(square, piece)
+            var squareCount = 0
+            while (moves != 0L && squareCount < BOARD_SIZE) {
+                if ((moves and 1L) != 0L) {
+                    addMove(Move.encode(square, squareCount))
+                    totalMoves++
+                }
 
-      //  }
-       // println("rays casted on iteration: $raysCasted with a time of: ${start/1_000.0}micros")
-        //println("Total moves found: $totalMoves")
-        return allMoves
+                moves = moves shr 1
+                squareCount++
+            }
+
+            //allMoves.put(square, moves)
+            //totalMoves += countSquares(moves)
+
+        }
+        //println(totalMoves)
+
+
+       // }
+        //println("rays casted on iteration: $raysCasted with a time of: ${start/1_000.0}micros")
+       // println("Total moves found: $totalMoves")
+       // println("Total moves in buffer: ${getMoveBufferFilledSpaces()}")
+        return moveBuffer
+    }
+
+    fun setEnemyAttackBitBoard() {
+        enemyAttackBitBoard = 0L
+        for (heat in enemyAttackSquares.reversed()) {
+
+
+           // if (heat > 0)
+        }
+    }
+
+    fun getMoveBufferFilledSpaces(): Int {
+        var count = 0
+        for (move in moveBuffer) {
+            if (move != 0) {
+                count++
+            }
+        }
+        return count
     }
 
 
@@ -295,120 +319,166 @@ class MoveGenerator(board: Board) {
         println("NPS: ${"%.2f".format(nps)} nodes/sec")
     }
 
-    // for generating actual moves, moves which will be reported in game
-    private fun genLegalPieceMoves(squareAndPiece:  Map.Entry<Int, Piece>?): MutableSet<Int> {
-        require(squareAndPiece != null) {}
-            val piece = squareAndPiece.value
-            val square = squareAndPiece.key
-            return genLegalPieceMoves(square, piece)
-    }
-    fun genLegalPieceMoves(square: Int, piece: Piece): MutableSet<Int> {
-        var moves = genPseudoPieceMoves(square, piece)
+ 
+    fun genLegalPieceMoves(square: Int, piece: Piece): Long {
+        val disjointMoves = genPseudoPieceMoves(square, piece)
+        var moves = 0L
+        for (move in disjointMoves) {
+            moves = moves or move
+        }
+
+        if (piece.isKing() && piece.color == WHITE) {
+            printBitboard(moves)
+
+            var i = 0
+            i++
+        }
 
         if (piece.isKing()) {
-
-            validateKingMoves(moves)
-            if (!piece.hasMoved && attackedKing != square) addCastleMoves(piece.color, square, moves)
-
-
+           // moves = validateKingMoves(moves)
+            //moves = addCastleMoves(piece, square, moves)
         }else  {
-            filterOutPins(square, moves, pins)
-            filterKingDefense(moves)
+            //moves = filterOutPins(square, moves, pins)
+            //moves = filterKingDefense(moves)
         }
 
         return moves
     }
 
-    private fun validateKingMoves(moves: MutableSet<Int>): MutableSet<Int> {
-        moves.removeAll {enemyAttackSquares[it] > 0}
-        return moves
+   fun printBitboard(bitboard: Long) {
+        for (rank in 7 downTo 0) {
+            for (file in 0..7) {
+                val square = rank * 8 + file
+                val bit = (bitboard shr square) and 1L
+                print(if (bit == 1L) "1 " else ". ")
+            }
+            println("  ${rank + 1}")
+        }
+        println("a b c d e f g h\n")
     }
-    private fun addCastleMoves(color: Int,square: Int, moves: MutableSet<Int>): MutableSet<Int> {
-        moves.addAll(castCastleRay(square, color).keys)
-        return moves
+
+    private fun validateKingMoves(moves: Long): Long {
+        var m = moves
+
+        for (i in 0.until(64)) {
+            if (enemyAttackSquares[i] > 0) {
+                //println(enemyAttackSquares.joinToString())
+                m = m and (1L shl i).inv()
+                printBitboard(m)
+            }
+        }
+
+        return m
+    }
+    private fun addCastleMoves(piece: Piece,square: Int, moves: Long): Long {
+        var m = moves
+        if (!piece.hasMoved && attackedKing != square) {
+
+            val r = castCastleRay(square, piece.color).keys
+            for (endSquare in r) {
+                m = m or (1L shl endSquare)
+            }
+
+        }
+        return m
     }
 
 
-    private fun filterOutPins(square: Int, moves: MutableSet<Int>, pins: Map<Int, Int>) {
-        if (square in pins.keys) { moves.retainAll { abs(vectorBetween(it, square)) == abs(pins[square] as Int) } }
+    private fun filterOutPins(square: Int, moves: Long, pins: Map<Int, Int>): Long {
+            if (square !in pins) return moves
+
+            val allowedVector = pins[square]!!
+            var filteredMoves = 0L
+
+            for (target in 0 until 64) {
+                val isMoveSet = ((moves shr target) and 1L) != 0L
+                if (!isMoveSet) continue
+
+                val v = vectorBetween(square, target)
+                if (v == allowedVector || v == -allowedVector) {
+                    filteredMoves = filteredMoves or (1L shl target)
+                }
+            }
+
+            return filteredMoves
+
     }
-    private fun filterKingDefense(moves: MutableSet<Int>) {
-        if (enemyAttackSquares[kingSquare as Int] > 1) { moves.clear(); return }
-        if (enemyAttackSquares[kingSquare as Int] > 0) filterDefense(moves, kingDefendingSquares.keys)
+    private fun filterKingDefense(moves: Long): Long {
+        return if (enemyAttackSquares[kingSquare as Int] > 1)  0L else
+         if (enemyAttackSquares[kingSquare as Int] > 0) filterDefense(moves, kingDefendingSquares.keys)
+         else moves
     }
-    private fun filterDefense(moves: MutableSet<Int>, defendingSquares: MutableSet<Int>) {
-        if (defendingSquares.isNotEmpty()) {  moves.retainAll(defendingSquares) }
+    private fun filterDefense(moves: Long, defendingSquares: MutableSet<Int>): Long {
+
+       return if (defendingSquares.isNotEmpty()) {
+            var filtered = 0L
+            for (square in defendingSquares) {
+                if (((moves shr square) and 1L) != 0L) {
+                    filtered = filtered or (1L shl square)
+                }
+            }
+           filtered
+       } else moves
     }
 
 
 
 
     // for generating potential move squares, ignoring check
-    private fun genAllPseudoMovesIllegalCaptures(color: Int): HashMap<Int,MutableSet<Int>> {
-        val allMoves = HashMap<Int,MutableSet<Int>>()
-        val squaresAndPieces = getAllPieces(color)
-        for (squareAndPiece in squaresAndPieces) {
-            val square = squareAndPiece.key;
-            val piece = squareAndPiece.value;
-            if (piece.isPawn()) allMoves.put(square, crawlPawnMoves(square, piece, ILLEGAL_CAPTURES).toMutableSet()) else
-            allMoves.put(square, crawlMoves(square, color, getMovementInfo(piece.type) ,getMoveFilter(piece.type), ILLEGAL_CAPTURES, utilityIntHolder).toMutableSet())
-        }
-        return allMoves
-    }
+//    private fun genAllPseudoMovesIllegalCaptures(color: Int): HashMap<Int,MutableSet<Int>> {
+//        val allMoves = HashMap<Int,MutableSet<Int>>()
+//        val squaresAndPieces = getAllPieces(color)
+//        for (squareAndPiece in squaresAndPieces) {
+//            val square = squareAndPiece.key;
+//            val piece = squareAndPiece.value;
+//            if (piece.isPawn()) allMoves.put(square, crawlPawnMoves(square, piece, ILLEGAL_CAPTURES).toMutableSet()) else
+//            allMoves.put(square, crawlMoves(square, color, getMovementInfo(piece.type) ,getMoveFilter(piece.type), ILLEGAL_CAPTURES, utilityIntHolder).toMutableSet())
+//        }
+//        return allMoves
+//    }
 
-    fun genPseudoPieceMoves(square: Int, piece: Piece): MutableSet<Int> {               /// dont detele
-        val moves = mutableSetOf<Int>()
-        moves.addAll(getMoves(square, piece))
-        return moves
+    fun genPseudoPieceMoves(square: Int, piece: Piece): LongArray {               /// dont detele
+        return getMoves(square, piece)
     }
 
 
     // gets the sum of all pseudo attack squares of the color's opponent (for king safety check)
-//    fun getOpponentAttackSquares(color: Int): MutableMap<Int, Int> {
-//        val allPseudoMoves = genAllPseudoMovesIllegalCaptures(getOppositeColor(color))
-//        var attackSquares = mutableMapOf<Int, Int>()
-//
-//
-//        for (originSquare in allPseudoMoves.keys) {
-//            val piece = getPiece(originSquare)
-//            val squares = allPseudoMoves[originSquare]
-//            if (squares != null) {
-//                if (piece.isPawn()) {
-//                    attackSquares.putAll(squares.filter { isDiagonalMove(it, originSquare) }.associateWith { attackSquares.getOrDefault(it, 0) + 1 })
-//                } else {
-//                    attackSquares.putAll(squares.associateWith { attackSquares.getOrDefault(it, 0) + 1 })
-//
-//                }
-//            }
-//
-//        }
-//       // println(attackSquares)
-//        return attackSquares
-//    }
-
     fun getOpponentAttackSquares(color: Int): IntArray {
         val attackMap = IntArray(64)  // way faster than mutableMap
-
-        for ((square, piece) in getAllPieces(getOppositeColor(color))) {
-            val targets = if (piece.isPawn()) {
-                crawlPawnMoves(square, piece, ILLEGAL_CAPTURES).filter {
-                    isDiagonalMove(it, square)
+        val pieces = getAllPieces(getOppositeColor(color))
+        //println("${referenceBoard.fetchPieces(getOppositeColor(color)).joinToString()}, ->  ${colorsNames[getOppositeColor(color)]} ")
+        for (square in pieces.indices) {
+            val piece = getPiece(square, color)
+            if (piece.isOccupied()) {
+                val attackMasks = if (piece.isPawn()) {
+                    crawlPawnMoves(square, piece, ILLEGAL_CAPTURES, onlyCaptures = true)
+                } else {
+                    crawlMovesFast(
+                        square,
+                        piece.color,
+                        getMovementInfo(piece.type),
+                        getMoveFilter(piece.type),
+                        ILLEGAL_CAPTURES,
+                    )
                 }
-            } else {
-                crawlMovesFast(
-                    square,
-                    piece.color,
-                    getMovementInfo(piece.type),
-                    getMoveFilter(piece.type),
-                    ILLEGAL_CAPTURES,
-                )
-            }
 
-            for (target in targets) {
-                if (target in 0..63) attackMap[target] += 1
+                for (mask in attackMasks) {
+                    var m = mask
+                    var position = 0
+                    while (m != 0L && position < BOARD_SIZE) {
+
+                        val bit = m and 1L
+                        if (bit != 0L) {
+                           // if ()
+                            attackMap[position]++
+                        }
+                        position++
+                        m = m shr 1
+
+                    }
+                }
             }
         }
-
         return attackMap
     }
 
@@ -426,47 +496,66 @@ class MoveGenerator(board: Board) {
     {
         val found = mutableMapOf<Int,Int>()
         val alerts = mutableListOf<Int>()
-        val ray = crawlMoves(startSquare, color, instructions).iterator()
+        val rays = crawlMoves(startSquare, color, instructions)
         var distance = 0
-        var lastVector = 0
+
         raysCasted++
-        while (ray.hasNext()) {
-            val nextSquare = ray.next()
-            val vector = vectorBetween(startSquare, nextSquare)  // signed
-            val piece = getPiece(nextSquare)
-            distance += 1
 
-            // we don't care about old prospects because were now looking in a different direction.
-            if (lastVector != vector) {
-                alerts.clear()
-                distance = 1
-                lastVector = vector
-            }
 
-            if (alertCondition(color, startSquare, distance, piece)) {     //alert trigger
-                alerts.add(nextSquare)
-            }
 
-            if (alertTrigger(color, startSquare, piece, vector, alerts)) {
-                when (rayType) {
-                    MAPPING_RAY -> for (square in alerts) {
-                        found.put(square, mappingInfo(square, distance, vector))
-                    }
-                    NORMAL_RAY ->  {
-                        found.putAll( format(alerts) )
-                        found.put(startSquare, startSquare)
-                        break
-                    }
+        for (r in rays) {
+            var ray = r
+            var nextSquare = 0
 
-                    CASTLE_RAY -> {
-                        if (alerts.size != distance && alerts.size == 2 && alerts.all {  enemyAttackSquares[it] == 0}) {
-                            found.putAll(format(alerts))
+            alerts.clear()
+            distance = 1
+            var vector = 0
+
+            while (ray != 0L) {
+
+
+                if (ray and 1L == 0L) { // look at the next square since this is empty
+                    ray = ray shr 1
+                    nextSquare++
+                    continue
+                }
+                // set the vector 1 time since each ray represents a direction
+                if (vector == 0) {
+                    vector = vectorBetween(startSquare, nextSquare)  // signed
+                }
+
+                val targetPiece = getPiece(nextSquare)
+
+
+                if (alertCondition(color, startSquare, distance, targetPiece)) {     //alert trigger
+                    alerts.add(nextSquare)
+                }
+
+                if (alertTrigger(color, startSquare, targetPiece, vector, alerts)) {
+                    when (rayType) {
+                        MAPPING_RAY -> for (square in alerts) {
+                            found.put(square, mappingInfo(square, distance, vector))
+                        }
+                        NORMAL_RAY ->  {
+                            found.putAll( format(alerts) )
+                            found.put(startSquare, startSquare)
+                            break
                         }
 
+                        CASTLE_RAY -> {
+                            if (alerts.size != distance && alerts.size == 2 && alerts.all {  enemyAttackSquares[it] == 0}) {
+                                found.putAll(format(alerts))
+                            }
+
+                        }
                     }
                 }
+                ray = ray shr 1
+                nextSquare++
+                distance++
             }
         }
+
         return found
     }
 
@@ -502,11 +591,10 @@ class MoveGenerator(board: Board) {
 
 
 
-    private fun getMoves(startSquare: Int, piece: Piece): MutableSet<Int> {
-        val foundMoves = mutableSetOf<Int>()
-        if (piece.isPawn()) foundMoves.addAll(crawlPawnMoves(startSquare, piece))
-        else foundMoves.addAll(crawlMoves(startSquare, piece.color, getMoveInstructions(piece.type)))
-        return foundMoves
+    private fun getMoves(startSquare: Int, piece: Piece): LongArray {
+        return if (piece.isPawn()) crawlPawnMoves(startSquare, piece)
+        else crawlMoves(startSquare, piece.color, getMoveInstructions(piece.type))
+
     }
 
     private fun crawlMoves(
@@ -562,7 +650,7 @@ class MoveGenerator(board: Board) {
     }
 
 
-    private fun crawlMoves(startSquare: Int, color: Int, moveInstructions: MoveInstructions): List<Int> {
+    private fun crawlMoves(startSquare: Int, color: Int, moveInstructions: MoveInstructions): LongArray {
         return crawlMovesFast(
             startSquare, color,
             moveInstructions.moveInfo, moveInstructions.moveFilter,
@@ -575,20 +663,30 @@ class MoveGenerator(board: Board) {
         moveInfo: MovementInfo,
         moveFilter: (Int, Int, Int) -> Boolean,
         specialCondition: Int = -1
-    ): List<Int> {
-        val result = mutableListOf<Int>()
+    ): LongArray {
+
+        val allDirections = LongArray(8)
 
         val vectors = moveInfo.getVectors()
 
-        for (vector in vectors) {
-            val tracker = mutableListOf<Int>()
-            var distance = 0
-
+        for (direction in vectors.indices) {
+            var tracker = 0L
+            var thisDirectionsMoves = 0L
+            val vector = vectors[direction]
             for (step in 1..min(moveInfo.distance, BOARD_WIDTH)) {
                 val newSquare = startSquare + (step * vector)
                 val pastSquare = startSquare + ((step - 1) * vector)
                 val targetPiece = getPiece(newSquare)
-                distance += 1
+
+
+                // for debugging/ selecting a specific piece
+//                if (getPiece(startSquare).isRook() && color == WHITE) {
+//                    printBitboard(thisDirectionsMoves)
+//
+//                    var i = 0
+//                    i++
+//                }
+
 
                 // wrapping is never allowed.
                 if (doesSliderCrawlerWrap(startSquare, newSquare, pastSquare)) break
@@ -599,66 +697,67 @@ class MoveGenerator(board: Board) {
                 when (specialCondition) {
                     XRAY_CONDITION -> {
                         if (targetPiece.isColor(color)) {
-                            tracker.add(newSquare)
-                            if (tracker.size > 1) break
-                            result.add(newSquare)
+                            tracker = tracker or (1L shl newSquare)
+                            if (tracker.countOneBits() > 1) break
+                            thisDirectionsMoves = thisDirectionsMoves or (1L shl newSquare)
                             continue
                         }
                     }
                     ILLEGAL_CAPTURES -> {
                         if (targetPiece.isColor(color)) {
-                            result.add(newSquare)
+                            thisDirectionsMoves = thisDirectionsMoves or (1L shl newSquare)
                             if (sliderMatchesVector(targetPiece, vector)) continue
                         } else if (targetPiece.isKing()) {
-                            result.add(newSquare)
+                            thisDirectionsMoves = thisDirectionsMoves or (1L shl newSquare)
                             continue
                         }
                     }
                 }
 
                 if (targetPiece.isOccupied()) {
-                    if (collisionIsCapture(newSquare, color)) {
-                        result.add(newSquare)
+                    if (!targetPiece.isColor(color)) {
+                        thisDirectionsMoves = thisDirectionsMoves or (1L shl newSquare)
                     }
                     break
                 }
 
-                result.add(newSquare)
+                thisDirectionsMoves = thisDirectionsMoves or (1L shl newSquare)
             }
+            allDirections[direction] = thisDirectionsMoves
         }
 
-        return result
+        return allDirections
     }
 
-    private fun crawlPawnMoves(startSquare: Int, piece: Piece, illegalCaptures: Int = -1): MutableSet<Int> {
-        val validSquares = mutableSetOf<Int>()
+    private fun crawlPawnMoves(startSquare: Int, piece: Piece, illegalCaptures: Int = -1, onlyCaptures: Boolean = false): LongArray {
+        var validSquares = 0L
         var canJump = false
 
         for (vector in pawnMoveInfo.getVectors()) {
             val newSquare = startSquare + (vector * getPawnDirection(piece.color))
 
 
-            if ((isDiagonalVector(vector) && (isValidPawnCapture( startSquare, newSquare, piece.color))
-                        || isEnpassantCapture(newSquare, piece.color)) || illegalCaptures == ILLEGAL_CAPTURES) {
-                validSquares.add(newSquare)
+            if ((isDiagonalVector(vector)
+                        && (((isValidPawnCapture( startSquare, newSquare, piece.color))
+                        || isEnpassantCapture(newSquare, piece.color)) || (illegalCaptures == ILLEGAL_CAPTURES && !doesWrap(startSquare, newSquare))))) {
+                validSquares = validSquares or (1L shl newSquare)
             }
-
-            if (isVerticalVector(vector) && isEmptySquare(newSquare)) {
-                if (rowDistance(startSquare, newSquare) == 1) {
-                    canJump = true
-                    validSquares.add(newSquare)
-                } else {
-                    if (canJump && !piece.hasMoved) {
-                        validSquares.add(newSquare)
+            if (!onlyCaptures) {
+                if (isVerticalVector(vector) && isEmptySquare(newSquare)) {
+                    if (rowDistance(startSquare, newSquare) == 1) {
+                        canJump = true
+                        validSquares = validSquares or (1L shl newSquare)
+                    } else {
+                        if (canJump && !piece.hasMoved) {
+                            validSquares = validSquares or (1L shl newSquare)
+                        }
                     }
                 }
             }
+
         }
-        return validSquares
+        return longArrayOf(validSquares)
     }
-
-
-
 
 
     private fun doesSliderCrawlerWrap(origin: Int, endSquare: Int, pastSquare: Int): Boolean =
@@ -753,14 +852,14 @@ class MoveGenerator(board: Board) {
     private fun isEmptySquare(square: Int): Boolean {
         return getPiece(square).isEmpty()
     }
-    private fun getPiece(square: Int): Piece {
-        return referenceBoard.fetchPiece(square)
+    private fun getPiece(square: Int, color: Int = NO_COLOR): Piece {
+        return referenceBoard.fetchPiece(square, color)
     }
     private fun getKingSquare(color: Int): Int? {
         return referenceBoard.getKingPosition(color)
     }
     private fun isInBounds(square: Int): Boolean {
-        return !(square > BOARD_SIZE || square < 0)
+        return !(square >= BOARD_SIZE || square < 0)
     }
 
     fun getCheckedKing(color: Int): Int {
@@ -776,7 +875,7 @@ class MoveGenerator(board: Board) {
 
     }
 
-    private fun getAllPieces(color: Int = NO_COLOR): MutableMap<Int, Piece> {
+    private fun getAllPieces(color: Int = NO_COLOR): Array<Piece> {
         return referenceBoard.fetchPieces(color)
     }
     fun setReferenceBoard(board: Board) {

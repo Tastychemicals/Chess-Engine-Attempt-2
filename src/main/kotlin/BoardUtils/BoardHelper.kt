@@ -142,7 +142,7 @@ fun convertPairToIntSquare(square: Pair<Int,Int>): Int {
 }
 
 fun convertIntToPairSquare(squareNumber: Int): Pair<Int, Int> {
-    val x = (squareNumber % 8)
+    val x = 7 - (squareNumber % 8)
     val y = squareNumber / 8
     return  Pair(x, y)
 }
@@ -181,8 +181,8 @@ fun getOppositeColor(color: Int): Int {
 }
 
 fun getPawnDirection(color: Int): Int = when (color) {
-     BLACK -> 1
-     WHITE -> -1
+     BLACK -> -1
+     WHITE -> 1
      else -> 0
 }
 
@@ -253,7 +253,7 @@ val colorsNames = arrayOf(
 
 fun simplifyFenBoard(fenString: String): String {
     var fenRebuilder = StringBuilder()
-    val fenBoard = fenString.split(" ")[0].split("/")
+    val fenBoard = fenString.split(" ")[0].split("/").reversed()
     for (rank in 0..7) {
         val fenRank = fenBoard[rank]
         for (char in fenRank) {
@@ -272,20 +272,32 @@ fun simplifyFenBoard(fenString: String): String {
 
 
 fun getPieceName(color: Int, type: Int): String {
-    return "${colorsNames[color]}  ${typeNames[type]}"
+    return if (type == EMPTY) ". " else
+     "${colorsNames[color]}  ${typeNames[type]}"
 }
 
 
+fun countSquares(b: Long): Int {
 
+    var c = b
+    c = c - ((c shr 1) and magicHex[0])
+    c = (c and magicHex[1]) + ((c shr 2) and magicHex[1])
+    c = (c + (c shr 4)) and magicHex[2]
+    c *= magicHex[3]
+
+    return (c shr 56).toInt()
+}
+
+private val magicHex = arrayOf(
+    0x5555555555555555L, 0x3333333333333333L, 0x0F0F0F0F0F0F0F0FL, 0x0101010101010101L
+)
 
 class BoardHelper {
 
 
     companion object {
 
-        private val magicHex = arrayOf(
-            0x5555555555555555UL, 0x3333333333333333UL, 0x0F0F0F0F0F0F0F0FUL, 0x0101010101010101uL
-        )
+
 
 
 
@@ -312,7 +324,7 @@ class BoardHelper {
 
 
 
-        fun countPieces(p: ULong): Int {
+        fun countPieces(p: Long): Int {
 
             var c = p
             c = c - ((c shr 1) and magicHex[0])

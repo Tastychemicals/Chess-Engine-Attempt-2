@@ -65,14 +65,14 @@ class Parser {
 
         ) // positions
         val ranks = mapOf(
-            "1" to 7,
-            "2" to 6,
-            "3" to 5,
-            "4" to 4,
-            "5" to 3,
-            "6" to 2,
-            "7" to 1,
-            "8" to 0,
+            "8" to 7,
+            "7" to 6,
+            "6" to 5,
+            "5" to 4,
+            "4" to 3,
+            "3" to 2,
+            "2" to 1,
+            "1" to 0,
 
         )
 

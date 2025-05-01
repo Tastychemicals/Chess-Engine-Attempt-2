@@ -1,68 +1,41 @@
 package Game
 import BoardUtils.*
 
-
-@JvmInline
-value class BitBoard(val board: ULong)
-
-
-
 class Board {
     val EMPTY_SQUARE = Piece(pieceCode(0,0))
 
-    private var enpassantSquare: Int?
+    private var enpassantSquare: Int? = null
     private var whiteKingPostion: Int? = null
     private var blackKingPostion: Int? = null
 
-    private val controller: Game
-    public val moveGenerator: MoveGenerator
-    private var allTypeBitBoards: Array<BitBoard>
-    private var pieces: Array<Piece>
-     var positionsAndPieces: MutableMap<Int, Piece>
+    private var controller: Game? = null
+    public val moveGenerator = MoveGenerator(this)
+
+    private var pieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
+    private var WhitePieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
+    private var BlackPieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
+    private var whitePieceCount = 0;
+    private var blackPieceCount = 0;
 
 
-    var lastMove: Pair<Int,Int>
+    var lastMove: Pair<Int,Int>? = null
     private val rookDestinationHolder = Holder<Int>()
 
     constructor(controller: Game) {
-        this.moveGenerator = MoveGenerator(this)
         this.controller = controller // each board object created gets a permanent Game.Game object
-        this.allTypeBitBoards = initializeBitboards()
-        this.pieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
-        this.positionsAndPieces = pieces.withIndex().associate { (square, piece) -> (square to piece) }.toMutableMap()
-        this.lastMove = Pair(-1,-1)
-        enpassantSquare = null
     }
 
     /**
      * Initializes this board's bit boards.
      */
 
-    fun initializeBitboards(): Array<BitBoard> {
-        val whitePawns = BitBoard(0uL)
-        val whiteKnights = BitBoard(0uL)
-        val whiteBishops = BitBoard(0uL)
-        val whiteRooks = BitBoard(0uL)
-        val whiteQueens = BitBoard(0uL)
-        val whiteKing = BitBoard(0uL)
-        val blackPawns = BitBoard(0uL)
-        val blackKnights = BitBoard(0uL)
-        val blackBishops = BitBoard(0uL)
-        val blackRooks = BitBoard(0uL)
-        val blackQueens = BitBoard(0uL)
-        val blackKing = BitBoard(0uL)
-        return arrayOf(
-            whitePawns , whiteKnights , whiteBishops , whiteRooks , whiteQueens , whiteKing ,
-            blackPawns , blackKnights , blackBishops , blackRooks , blackQueens , blackKing
-        )
-    }
 
     fun loadBoard(fenString: String) {
         val digestibleBoard = simplifyFenBoard(fenString)
         for (square in 0.until(BOARD_SIZE)) {
             val piece = getPieceFromFen(digestibleBoard[square])
             pieces[square] = piece
-            positionsAndPieces[square] = piece
+            addToColorArray(piece,square)
             if (piece.isKing()) {
                 updateKingPosition(piece.color, square)
             }
@@ -74,9 +47,7 @@ class Board {
      * @return true
      */
     fun clearBoard(): Boolean {
-        allTypeBitBoards = initializeBitboards()
         pieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
-        positionsAndPieces.clear()
        // piecePositions = pieces.withIndex().associate { (square, piece) -> (square to piece) }.toMutableMap()
         return true
     }
@@ -89,8 +60,10 @@ class Board {
     fun addPiece(piece: Piece, square: Int): Boolean {
         if (isInBounds(square) && !piece.isEmpty()) {
             if (pieces[square].isEmpty()) {
+
+                addToColorArray(piece, square)
                 pieces[square] = piece
-                positionsAndPieces[square] = piece
+
                 if (piece.isKing()) {
                     updateKingPosition(piece.color, square)
                 }
@@ -99,6 +72,38 @@ class Board {
         }
         return false
     }
+
+    private fun addToColorArray(piece: Piece, position: Int) {
+        if (piece.isColor(WHITE)) {
+            WhitePieces[position] = piece
+            whitePieceCount++
+        }
+        else {
+            if (piece.isColor(BLACK)){
+                BlackPieces[position] = piece
+                blackPieceCount++
+            }
+
+        }
+
+    }
+
+    private fun removeFromColorArrays(position: Int) {
+        if (WhitePieces[position].isOccupied()) {
+            WhitePieces[position] = EMPTY_SQUARE
+            whitePieceCount--
+        }
+        if (BlackPieces[position].isOccupied()) {
+            BlackPieces[position]   = EMPTY_SQUARE
+            blackPieceCount--
+        }
+    }
+
+    private fun getColorArray(color: Int): Array<Piece> {
+        return  if (color == WHITE) WhitePieces else BlackPieces
+    }
+
+
     fun addPiece(color: Int, type: Int, squarePosition: Int): Boolean {
         if (isInBounds(squarePosition) && type != EMPTY) {
             return addPiece(Piece(pieceCode(color, type)), squarePosition)
@@ -113,7 +118,7 @@ class Board {
     fun removePiece(squarePosition: Int): Boolean {
         if (squarePosition in 0.until(BOARD_SIZE)){
             pieces[squarePosition] = EMPTY_SQUARE
-            positionsAndPieces[squarePosition] = EMPTY_SQUARE
+            removeFromColorArrays(squarePosition)
         }
         return false
     }
@@ -128,13 +133,10 @@ class Board {
         val movingPiece = pieces[origin]
         if (!movingPiece.isEmpty() && origin != endSquare) {
             val validMoves = generateMoves(movingPiece.color)
-            if (validMoves[origin]?.contains(endSquare) == true ) {
 
-
+            if (validMoves.any { Move.getStart(it) == origin && Move.getEnd(it) == endSquare}) {
                 handleMoveTypes(movingPiece, origin, endSquare)
-
-
-
+                //println("$whitePieceCount,  $blackPieceCount")
                 lastMove = Pair(origin,endSquare)
                 return true
                     }
@@ -207,14 +209,15 @@ class Board {
     }
 
     fun tryMove(origin: Int, endSquare: Int) {
-        if (controller.turn == getPieceColorFromSquare(origin)) {
+        //moveGenerator.benchmarkMovegen()
+        if (controller?.turn == getPieceColorFromSquare(origin) || controller == null) {
             if (makeMove(origin,endSquare)) {
-                controller.changeTurn()
+                controller?.changeTurn()
             }
         }
     } // move out of class
 
-    fun generateMoves(color: Int): HashMap<Int, MutableSet<Int>> {
+    fun generateMoves(color: Int): IntArray {
         return moveGenerator.genAllLegalMoves(color)
     }
 
@@ -222,21 +225,13 @@ class Board {
      * @return an array containing each piece Bit Game.Board.
      */
 
-    fun fetchPieces(color: Int = NO_COLOR): MutableMap<Int, Piece> {
-        return buildMap {
-            for ((square, piece) in pieces.withIndex()) {
-                if (piece.isEmpty()) continue
-                if (color == NO_COLOR || piece.isColor(color)) {
-                    put(square, piece)
-                }
-            }
-        }.toMutableMap()
+    fun fetchPieces(color: Int = NO_COLOR): Array<Piece> {
+        return if (color == NO_COLOR) return pieces else getColorArray(color)
     }
-
-    fun fetchPiece(squarePosition: Int): Piece {
-
-
+    fun fetchPiece(squarePosition: Int, color: Int = NO_COLOR): Piece {
         if (isInBounds(squarePosition)) {
+            if (color == WHITE) return WhitePieces[squarePosition]
+            if (color == BLACK) return BlackPieces[squarePosition]
             return pieces[squarePosition]
         }
         return EMPTY_SQUARE

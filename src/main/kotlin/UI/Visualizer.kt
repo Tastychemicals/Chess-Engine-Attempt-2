@@ -1,6 +1,7 @@
 package UI
 
 import BoardUtils.BOARD_SIZE
+import BoardUtils.Move
 import Game.Game
 import Game.Piece
 
@@ -36,7 +37,7 @@ class Visualizer {
 
         this.showAllSquares = true
         this.orientation = 0
-        this.lastMoveMask = display.board.lastMove
+        this.lastMoveMask = display.board.lastMove?: Pair(-1,-1)
 
     }
 
@@ -62,10 +63,9 @@ class Visualizer {
     fun updateCustomMask(): Boolean {
         mask.clear()
         moveSquareMask.clear()
-        heatMask = IntArray(64)
         checkedKingMask = display.board.moveGenerator.getCheckedKing(display.turn)
         heatMask = display.board.moveGenerator.enemyAttackSquares
-        val pieces = display.board.fetchPieces().values.toList()
+        val pieces = display.board.fetchPieces()
 
         for (square in 0.until(BOARD_SIZE)) {
             for (filter in Filters) {
@@ -75,15 +75,18 @@ class Visualizer {
                 }
             }
         }
-        lastMoveMask = display.board.lastMove
+        lastMoveMask = display.board.lastMove?: Pair(-1,-1)
 
         return true
         println("mask squares:" + mask)
     }
 
     fun addMoveSquareMask(square: Int): Boolean {
-        moveSquareMask = display.board.moveGenerator.genAllLegalMoves(display.board.fetchPiece(square).color)[square] ?: mutableSetOf()
-        //moveSquareMask = display.board.moveGenerator.crawlMoves(square, display.board.fetchPiece(square), display.board.moveGenerator.kingMoveInstructions).toMutableSet()
+        val moves = display.board.moveGenerator.genAllLegalMoves(display.board.fetchPiece(square).color).filter {  Move.getStart(it) == square }.map { it -> Move.getEnd(it)}.toMutableSet()
+
+        moveSquareMask = moves
+
+
         return true
     }
 
