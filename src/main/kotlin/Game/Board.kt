@@ -140,6 +140,7 @@ class Board {
             if (validMoves.any { Move.getStart(it) == origin && Move.getEnd(it) == endSquare}) {
                 val move = validMoves.find { Move.getStart(it) == origin && Move.getEnd(it) == endSquare } as Int
                 handleMoveTypes(movingPiece, origin, endSquare)
+                println(getBoardString())
                 println("This move is: " + Move.getFlagNames(move).joinToString())
                 //println("$whitePieceCount,  $blackPieceCount")
                 lastMove = Pair(origin,endSquare)
@@ -264,4 +265,23 @@ class Board {
     }
 
     fun isInBounds(square: Int): Boolean = square in 0.until(BOARD_SIZE)
+
+    fun getBoardString(orientation: Int = 0): String {
+        val board = StringBuilder()
+        val line = StringBuilder()
+        board.append("+---+---+---+---+---+---+---+---+\n")
+        line.append("|")
+        for (square in pieces.indices) {
+            val piece = fetchPiece(square)
+            line.append(" ${piece.symbol()} |")
+            if ((square % 8) == 7 )  {
+                board.append(line.toString().reversed() + "\n")
+                line.clear()
+                board.append("+---+---+---+---+---+---+---+---+\n")
+                line.append("|")
+            }
+
+        }
+        return if (orientation == WHITE) board.reversed().toString() else board.toString()
+    }
 }

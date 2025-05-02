@@ -257,8 +257,8 @@ class MoveGenerator(board: Board) {
             val piece = getPiece(square, color)
             if (piece.isEmpty()) continue
             var moves: Long = genLegalPieceMoves(square, piece)
-            println("Showing moves for $piece")
-            printBitboard(moves)
+            //println("Showing moves for $piece")
+            //printBitboard(moves)
 
             for (endSquare in 0.until(BOARD_SIZE)) {
                 if (moves and (1L shl endSquare) != 0L) {

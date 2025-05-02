@@ -81,10 +81,11 @@ class GUI : Application() {
 
     @FXML
     fun newGame() {
-        println("before orientation: " + visualizer.orientation)
-        visualizer.setNewOrientation(game.player1color)
+       // println("before orientation: " + visualizer.orientation)
+
         CoroutineScope(Dispatchers.Default).launch{
             game.startNewGame()
+            visualizer.setNewOrientation(game.player1color)
             log.text = ""
 
         }
@@ -294,7 +295,7 @@ class GUI : Application() {
     fun adjustForOrientation(coords: Pair<Int,Int>): Pair<Int, Int> {
         //return Pair(7 - coords.first, 7 - coords.second)
         // return coords
-        return if (visualizer.orientation == game.player1color) coords else Pair(7 - coords.first, 7 - coords.second)
+        return if (visualizer.orientation == WHITE) Pair(7 - coords.first, 7 - coords.second) else coords
     }
 
     fun getSquareFromPixels(x: Double, y: Double): Pair<Int, Int> {

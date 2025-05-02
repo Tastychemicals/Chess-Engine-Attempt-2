@@ -35,6 +35,7 @@ class Game {
 
         board.loadBoard(fen)
         println("new game started")
+        println(board.getBoardString(player1color))
 
         //repeat(1000) {board.moveGenerator.genAllLegalMoves(BLACK)}
         //repeat(10) {board.moveGenerator.benchmarkMovegen()}

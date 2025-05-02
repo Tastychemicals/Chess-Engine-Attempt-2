@@ -63,7 +63,28 @@ value class Piece(val bitCode: UInt = 0u) {
 
 
 
-
+    fun symbol(): String {
+        return when (fetchColor()) {
+            WHITE -> when (type) {
+                PAWN -> "P"
+                KNIGHT -> "N"
+                BISHOP -> "B"
+                ROOK -> "R"
+                QUEEN -> "Q"
+                KING -> "K"
+                else -> " "
+            }
+            BLACK -> when (type) {
+                PAWN -> "p"
+                KNIGHT -> "n"
+                BISHOP -> "b"
+                ROOK -> "r"
+                QUEEN -> "q"
+                KING -> "k"
+                else -> " "
+            } else -> " "
+        }
+    }
     override fun toString(): String {
         return getPieceName(color, type)
     }
