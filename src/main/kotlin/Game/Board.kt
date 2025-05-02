@@ -269,19 +269,28 @@ class Board {
     fun getBoardString(orientation: Int = 0): String {
         val board = StringBuilder()
         val line = StringBuilder()
-        board.append("+---+---+---+---+---+---+---+---+\n")
+        var rank = 0
+        val letters =  "     A   B   C   D   E   F   G   H     "
+        val lettersOriented = letters.reversed()
+        board.append(lettersOriented + "\n")
+        board.append("   +---+---+---+---+---+---+---+---+   \n")
+
         line.append("|")
         for (square in pieces.indices) {
             val piece = fetchPiece(square)
             line.append(" ${piece.symbol()} |")
             if ((square % 8) == 7 )  {
-                board.append(line.toString().reversed() + "\n")
+                if ((square / 8) >= rank) rank++
+                line.append(" $rank ")
+                board.append(line.toString().reversed() + " $rank " +"\n")
                 line.clear()
-                board.append("+---+---+---+---+---+---+---+---+\n")
+                board.append("   +---+---+---+---+---+---+---+---+   \n")
                 line.append("|")
+
             }
 
         }
+        board.append(lettersOriented)
         return if (orientation == WHITE) board.reversed().toString() else board.toString()
     }
 }
