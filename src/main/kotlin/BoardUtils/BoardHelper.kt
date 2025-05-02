@@ -7,7 +7,7 @@ import kotlin.random.Random
 typealias move = Int
 // ---------- Board ----------
 const val BOARD_SIZE = 64
-const val BOARD_WIDTH = BOARD_SIZE / 8
+const val BOARD_AXIS_LENGTH = BOARD_SIZE / 8
 const val SQUARE_DIMENSION = 67.5
 // -----------------------------
 

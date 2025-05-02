@@ -20,16 +20,16 @@ class MoveGenerator(board: Board) {
     */
 
     private val pawnMoveInfo = MovementInfo(7, 8, 9, 16, pieceType = PAWN)
-    private val knightMoveInfo = MovementInfo(-17, -15, -10,-6, 6, 10, 15, 17, pieceType = KNIGHT, distance = 1)
+    private val knightMoveInfo = MovementInfo(-17, -15, -10,-6, 6, 10, 15, 17, pieceType = KNIGHT, maxDistance = 1)
     private val bishopMoveInfo = MovementInfo(-9, -7, 7, 9, pieceType = BISHOP)
     private val rookMoveInfo = MovementInfo(-8, -1, 1, 8, pieceType = ROOK)
     private val queenMoveInfo = MovementInfo(-9, -8, -7, -1, 1, 7, 8, 9, pieceType = QUEEN)
-    private val kingMoveInfo = MovementInfo(-9, -8, -7, -1, 1, 7, 8, 9, pieceType = KING, distance = 1)
+    private val kingMoveInfo = MovementInfo(-9, -8, -7, -1, 1, 7, 8, 9, pieceType = KING, maxDistance = 1)
 
 
     private val noMoveInfo = MovementInfo(pieceType = EMPTY)
-    private val pawnAttackInfo = MovementInfo(-9,-7,7,9, pieceType = BISHOP, distance = 1)
-    private val castlingMoveInfo = MovementInfo(-1,1, pieceType = ROOK, distance = 4)
+    private val pawnAttackInfo = MovementInfo(-9,-7,7,9, pieceType = BISHOP, maxDistance = 1)
+    private val castlingMoveInfo = MovementInfo(-1,1, pieceType = ROOK, maxDistance = 4)
     //------------------------------------------------------------------------------------------------------------------
 
     /**
@@ -177,7 +177,7 @@ class MoveGenerator(board: Board) {
         val vector6: Int = 0,
         val vector7: Int = 0,
         val vector8: Int = 0,
-        val distance: Int = BOARD_SIZE,
+        val maxDistance: Int = BOARD_SIZE,
         val pieceType: Int) {
         private val vectors = listOf(
             this::vector1, this::vector2,
@@ -240,7 +240,7 @@ class MoveGenerator(board: Board) {
         //val allMoves = HashMap<Int,MutableSet<Int>>()
         moveBuffer.clear()
         var totalMoves = 0
-        //val start = measureNanoTime {
+        val start = measureNanoTime {
 
         val pieces = getAllPieces(color)
         kingSquare = getKingSquare(color)
@@ -275,20 +275,11 @@ class MoveGenerator(board: Board) {
         //println(totalMoves)
 
 
-       // }
-        //println("rays casted on iteration: $raysCasted with a time of: ${start/1_000.0}micros")
-       // println("Total moves found: $totalMoves")
-       // println("Total moves in buffer: ${getMoveBufferFilledSpaces()}")
-        return moveBuffer
-    }
-
-    fun setEnemyAttackBitBoard() {
-        enemyAttackBitBoard = 0L
-        for (heat in enemyAttackSquares.reversed()) {
-
-
-           // if (heat > 0)
         }
+        println("rays casted on iteration: $raysCasted with a time of: ${start/1_000.0}micros")
+        println("Total moves found: $totalMoves")
+        println("Total moves in buffer: ${getMoveBufferFilledSpaces()}")
+        return moveBuffer
     }
 
     fun getMoveBufferFilledSpaces(): Int {
@@ -327,25 +318,17 @@ class MoveGenerator(board: Board) {
             moves = moves or move
         }
 
-        if (piece.isKing() && piece.color == WHITE) {
-            printBitboard(moves)
-
-            var i = 0
-            i++
-        }
-
         if (piece.isKing()) {
-           // moves = validateKingMoves(moves)
-            //moves = addCastleMoves(piece, square, moves)
+            moves = validateKingMoves(moves)
+            moves = addCastleMoves(piece, square, moves)
         }else  {
-            //moves = filterOutPins(square, moves, pins)
-            //moves = filterKingDefense(moves)
+            moves = filterOutPins(square, moves, pins)
+            moves = filterKingDefense(moves)
         }
 
         return moves
     }
-
-   fun printBitboard(bitboard: Long) {
+    fun printBitboard(bitboard: Long) {
         for (rank in 7 downTo 0) {
             for (file in 0..7) {
                 val square = rank * 8 + file
@@ -364,7 +347,7 @@ class MoveGenerator(board: Board) {
             if (enemyAttackSquares[i] > 0) {
                 //println(enemyAttackSquares.joinToString())
                 m = m and (1L shl i).inv()
-                printBitboard(m)
+                //printBitboard(m)
             }
         }
 
@@ -411,10 +394,15 @@ class MoveGenerator(board: Board) {
     private fun filterDefense(moves: Long, defendingSquares: MutableSet<Int>): Long {
 
        return if (defendingSquares.isNotEmpty()) {
+
             var filtered = 0L
             for (square in defendingSquares) {
+                if (square == 46)
+                   // printBitboard(filtered)
+
                 if (((moves shr square) and 1L) != 0L) {
                     filtered = filtered or (1L shl square)
+                    //if (square == 46) printBitboard(filtered)
                 }
             }
            filtered
@@ -502,30 +490,41 @@ class MoveGenerator(board: Board) {
 
         raysCasted++
 
+//        var s = 0L
+//        for (r in rays) {
+//            printBitboard(s)
+//            s = r or s
+//        }
+//        println("crawled for ray casting for ${getPiece(startSquare)}: ")
+//        printBitboard(s)
 
 
-        for (r in rays) {
-            var ray = r
-            var nextSquare = 0
-
+        var vector = 0
+        var direction = 0
+        val vectors = instructions.moveInfo.getVectors()
+        for (ray in rays) {
             alerts.clear()
             distance = 1
-            var vector = 0
+            if (direction >= vectors.size) break
+            vector = vectors[direction]
+            direction++
 
-            while (ray != 0L) {
-
-
-                if (ray and 1L == 0L) { // look at the next square since this is empty
-                    ray = ray shr 1
-                    nextSquare++
+            while (distance < BOARD_AXIS_LENGTH) {
+                var nextSquare = startSquare + (distance * vector)
+                if ((1L shl nextSquare) and ray == 0L)  {
+                    distance++
                     continue
                 }
-                // set the vector 1 time since each ray represents a direction
-                if (vector == 0) {
-                    vector = vectorBetween(startSquare, nextSquare)  // signed
-                }
+
 
                 val targetPiece = getPiece(nextSquare)
+
+//                if (color == BLACK && getPiece(startSquare).type == KING && alertCondition == sliderThreatCondition) {
+//
+//
+//                    var i = 0
+//                    i++
+//                }
 
 
                 if (alertCondition(color, startSquare, distance, targetPiece)) {     //alert trigger
@@ -540,7 +539,8 @@ class MoveGenerator(board: Board) {
                         NORMAL_RAY ->  {
                             found.putAll( format(alerts) )
                             found.put(startSquare, startSquare)
-                            break
+                           // println("alerts found for this ray: ${alerts.joinToString()}")
+                            // continue //break
                         }
 
                         CASTLE_RAY -> {
@@ -551,8 +551,6 @@ class MoveGenerator(board: Board) {
                         }
                     }
                 }
-                ray = ray shr 1
-                nextSquare++
                 distance++
             }
         }
@@ -573,7 +571,7 @@ class MoveGenerator(board: Board) {
         threats.putAll(castSliderThreatRay(square, color))
         threats.putAll(castKnightThreatRay(square, color))
         threats.putAll(castPawnThreatRay(square, color))
-       // println(threats.keys)
+       // println("Threats: " + threats.keys.joinToString())
         return threats
     }
     private fun castCastleRay(square: Int, color: Int): MutableMap<Int, Int> {
@@ -609,7 +607,7 @@ class MoveGenerator(board: Board) {
         for (vector in moveInfo.getVectors()) {
             val tracker = mutableSetOf<Int>()
 
-            for (distance in 1..min(moveInfo.distance, BOARD_WIDTH)) {
+            for (distance in 1..min(moveInfo.maxDistance, BOARD_AXIS_LENGTH)) {
                 holder.hold(vector) // so that we may check on the direction the iterator is on later
                 val newSquare = startSquare + (distance * vector)
                 val pastSquare = startSquare + ((distance -1) * vector)
@@ -674,7 +672,7 @@ class MoveGenerator(board: Board) {
             var tracker = 0L
             var thisDirectionsMoves = 0L
             val vector = vectors[direction]
-            for (step in 1..min(moveInfo.distance, BOARD_WIDTH)) {
+            for (step in 1..min(moveInfo.maxDistance, BOARD_AXIS_LENGTH)) {
                 val newSquare = startSquare + (step * vector)
                 val pastSquare = startSquare + ((step - 1) * vector)
                 val targetPiece = getPiece(newSquare)
@@ -810,7 +808,7 @@ class MoveGenerator(board: Board) {
         return abs(vector) == 6 || abs(vector) == 10 || abs(vector) == 15 || abs(vector) == 17
     }
     private fun isVerticalVector(vector: Int): Boolean {
-        return abs(vector) % BOARD_WIDTH == 0;
+        return abs(vector) % BOARD_AXIS_LENGTH == 0;
     }
 
     private fun vectorBetween(origin: Int, endSquare: Int): Int {

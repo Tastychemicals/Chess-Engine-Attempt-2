@@ -48,6 +48,9 @@ class Board {
      */
     fun clearBoard(): Boolean {
         pieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
+        WhitePieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
+        BlackPieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
+
        // piecePositions = pieces.withIndex().associate { (square, piece) -> (square to piece) }.toMutableMap()
         return true
     }
