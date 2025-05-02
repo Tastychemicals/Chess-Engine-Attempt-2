@@ -140,7 +140,7 @@ class Board {
             if (validMoves.any { Move.getStart(it) == origin && Move.getEnd(it) == endSquare}) {
                 val move = validMoves.find { Move.getStart(it) == origin && Move.getEnd(it) == endSquare } as Int
                 handleMoveTypes(movingPiece, origin, endSquare)
-                println("This move is: " + Move.getFlagNames(move))
+                println("This move is: " + Move.getFlagNames(move).joinToString())
                 //println("$whitePieceCount,  $blackPieceCount")
                 lastMove = Pair(origin,endSquare)
                 return true

@@ -396,9 +396,6 @@ class MoveGenerator(board: Board) {
 
             var filtered = 0L
             for (square in defendingSquares) {
-                if (square == 46)
-                   // printBitboard(filtered)
-
                 if (((moves shr square) and 1L) != 0L) {
                     filtered = filtered or (1L shl square)
                     //if (square == 46) printBitboard(filtered)
@@ -407,7 +404,6 @@ class MoveGenerator(board: Board) {
            filtered
        } else moves
     }
-
 
     fun genPseudoPieceMoves(square: Int, piece: Piece): LongArray {               /// dont detele
         return getMoves(square, piece)
