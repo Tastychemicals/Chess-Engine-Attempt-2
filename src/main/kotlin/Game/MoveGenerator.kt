@@ -257,24 +257,24 @@ class MoveGenerator(board: Board) {
             val piece = getPiece(square, color)
             if (piece.isEmpty()) continue
             var moves: Long = genLegalPieceMoves(square, piece)
-            var squareCount = 0
-            while (moves != 0L && squareCount < BOARD_SIZE) {
-                if ((moves and 1L) != 0L) {
-                    addMove(Move.encode(square, squareCount))
+            println("Showing moves for $piece")
+            printBitboard(moves)
+
+            for (endSquare in 0.until(BOARD_SIZE)) {
+                if (moves and (1L shl endSquare) != 0L) {
+                    val pieceOnEnd = getPiece(endSquare)
+                    val flags = Move.encodeFlags(
+                        pieceOnEnd.isOccupied(),
+                        (piece.isKing() && abs(square - endSquare) == CASTLE_MOVE_DISTANCE),
+                        (piece.isPawn() && isOnBack(endSquare)),
+                        (piece.isPawn() && pieceOnEnd.isEmpty() && isDiagonalMove(square, endSquare))
+                    )
+                    addMove(Move.encode(square, endSquare, flags))
                     totalMoves++
                 }
-
-                moves = moves shr 1
-                squareCount++
             }
-
-            //allMoves.put(square, moves)
-            //totalMoves += countSquares(moves)
-
         }
         //println(totalMoves)
-
-
         }
         println("rays casted on iteration: $raysCasted with a time of: ${start/1_000.0}micros")
         println("Total moves found: $totalMoves")
@@ -366,7 +366,6 @@ class MoveGenerator(board: Board) {
         return m
     }
 
-
     private fun filterOutPins(square: Int, moves: Long, pins: Map<Int, Int>): Long {
             if (square !in pins) return moves
 
@@ -409,21 +408,6 @@ class MoveGenerator(board: Board) {
        } else moves
     }
 
-
-
-
-    // for generating potential move squares, ignoring check
-//    private fun genAllPseudoMovesIllegalCaptures(color: Int): HashMap<Int,MutableSet<Int>> {
-//        val allMoves = HashMap<Int,MutableSet<Int>>()
-//        val squaresAndPieces = getAllPieces(color)
-//        for (squareAndPiece in squaresAndPieces) {
-//            val square = squareAndPiece.key;
-//            val piece = squareAndPiece.value;
-//            if (piece.isPawn()) allMoves.put(square, crawlPawnMoves(square, piece, ILLEGAL_CAPTURES).toMutableSet()) else
-//            allMoves.put(square, crawlMoves(square, color, getMovementInfo(piece.type) ,getMoveFilter(piece.type), ILLEGAL_CAPTURES, utilityIntHolder).toMutableSet())
-//        }
-//        return allMoves
-//    }
 
     fun genPseudoPieceMoves(square: Int, piece: Piece): LongArray {               /// dont detele
         return getMoves(square, piece)
@@ -490,13 +474,6 @@ class MoveGenerator(board: Board) {
 
         raysCasted++
 
-//        var s = 0L
-//        for (r in rays) {
-//            printBitboard(s)
-//            s = r or s
-//        }
-//        println("crawled for ray casting for ${getPiece(startSquare)}: ")
-//        printBitboard(s)
 
 
         var vector = 0
@@ -518,13 +495,6 @@ class MoveGenerator(board: Board) {
 
 
                 val targetPiece = getPiece(nextSquare)
-
-//                if (color == BLACK && getPiece(startSquare).type == KING && alertCondition == sliderThreatCondition) {
-//
-//
-//                    var i = 0
-//                    i++
-//                }
 
 
                 if (alertCondition(color, startSquare, distance, targetPiece)) {     //alert trigger
@@ -676,16 +646,6 @@ class MoveGenerator(board: Board) {
                 val newSquare = startSquare + (step * vector)
                 val pastSquare = startSquare + ((step - 1) * vector)
                 val targetPiece = getPiece(newSquare)
-
-
-                // for debugging/ selecting a specific piece
-//                if (getPiece(startSquare).isRook() && color == WHITE) {
-//                    printBitboard(thisDirectionsMoves)
-//
-//                    var i = 0
-//                    i++
-//                }
-
 
                 // wrapping is never allowed.
                 if (doesSliderCrawlerWrap(startSquare, newSquare, pastSquare)) break
@@ -874,8 +834,8 @@ class MoveGenerator(board: Board) {
 
     }
 
-    private fun getAllPieces(color: Int = NO_COLOR): Array<Piece> {
-        return referenceBoard.fetchPieces(color)
+    private fun getAllPieces(team: Int = NO_COLOR): Array<Piece> {
+        return referenceBoard.fetchPieces(team)
     }
     fun setReferenceBoard(board: Board) {
         referenceBoard = board

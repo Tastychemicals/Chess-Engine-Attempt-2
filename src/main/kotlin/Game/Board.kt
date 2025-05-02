@@ -102,8 +102,8 @@ class Board {
         }
     }
 
-    private fun getColorArray(color: Int): Array<Piece> {
-        return  if (color == WHITE) WhitePieces else BlackPieces
+    private fun getColorArray(team: Int): Array<Piece> {
+        return  if (team == WHITE) WhitePieces else BlackPieces
     }
 
 
@@ -138,7 +138,9 @@ class Board {
             val validMoves = generateMoves(movingPiece.color)
 
             if (validMoves.any { Move.getStart(it) == origin && Move.getEnd(it) == endSquare}) {
+                val move = validMoves.find { Move.getStart(it) == origin && Move.getEnd(it) == endSquare } as Int
                 handleMoveTypes(movingPiece, origin, endSquare)
+                println("This move is: " + Move.getFlagNames(move))
                 //println("$whitePieceCount,  $blackPieceCount")
                 lastMove = Pair(origin,endSquare)
                 return true
@@ -228,8 +230,8 @@ class Board {
      * @return an array containing each piece Bit Game.Board.
      */
 
-    fun fetchPieces(color: Int = NO_COLOR): Array<Piece> {
-        return if (color == NO_COLOR) return pieces else getColorArray(color)
+    fun fetchPieces(team: Int = NO_COLOR): Array<Piece> {
+        return if (team == NO_COLOR) return pieces else getColorArray(team)
     }
     fun fetchPiece(squarePosition: Int, color: Int = NO_COLOR): Piece {
         if (isInBounds(squarePosition)) {

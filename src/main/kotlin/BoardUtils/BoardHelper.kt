@@ -66,18 +66,38 @@ object Move {
     fun getFlags(move: move): Int {
         return (move and FLAGS_SELECTOR) shr FLAGS_BIT
     }
+
+    fun getFlagNames(move: move): List<String> {
+        val names = mutableListOf<String>()
+        if (isCapture(move)) {
+            names.add("Capture")
+        }
+        if (isEnPassant(move)) {
+            names.add("En Passant")
+        }
+        if (isPromotion(move)) {
+            names.add("Promotion")
+        }
+        if (isCastle(move)) {
+            names.add("Castle")
+        }
+        if (names.isEmpty()){
+            names.add("Quiet Move")
+        }
+        return names
+    }
     fun encodeFlags(
         capture: Boolean = false,
         castle: Boolean = false,
-        check: Boolean = false,
-        checkmate: Boolean = false,
+        //check: Boolean = false,
+        //checkmate: Boolean = false,
         promotion: Boolean = false,
         enpassant: Boolean = false
     ): Int {
         return ((if (capture) 1 else 0) shl CAPTURE_BIT) or
                 ((if (castle) 1 else 0) shl CASTLE_BIT) or
-                ((if (check) 1 else 0) shl CHECK_BIT) or
-                ((if (checkmate) 1 else 0) shl CHECKMATE_BIT) or
+               // ((if (check) 1 else 0) shl CHECK_BIT) or
+               // ((if (checkmate) 1 else 0) shl CHECKMATE_BIT) or
                 ((if (promotion) 1 else 0) shl PROMOTION_BIT) or
                 ((if (enpassant) 1 else 0) shl ENPASSANT_BIT)
     }
@@ -87,12 +107,12 @@ object Move {
     fun isCastle (move: move): Boolean {
         return getFlags(move) and CASTLE_FLAG != 0
     }
-    fun isCheck (move: move): Boolean {
-        return getFlags(move) and CHECK_FLAG != 0
-    }
-    fun isCheckMate (move: move): Boolean {
-        return getFlags(move) and CHECKMATE_FLAG != 0
-    }
+//    fun isCheck (move: move): Boolean {
+//        return getFlags(move) and CHECK_FLAG != 0
+//    }
+//    fun isCheckMate (move: move): Boolean {
+//        return getFlags(move) and CHECKMATE_FLAG != 0
+//    }
     fun isPromotion (move: move): Boolean {
         return getFlags(move) and PROMOTION_FLAG != 0
     }
@@ -273,7 +293,7 @@ fun simplifyFenBoard(fenString: String): String {
 
 fun getPieceName(color: Int, type: Int): String {
     return if (type == EMPTY) ". " else
-     "${colorsNames[color]}  ${typeNames[type]}"
+     "${colorsNames[color]} ${typeNames[type]}"
 }
 
 
