@@ -7,7 +7,7 @@ import Game.Piece
 
 class Visualizer {
     /**
-     * ------- Class used explicitly by the .GUI --------
+     * ------- Class used explicitly by the GUI --------
      */
     var lastMoveMask: Pair<Int,Int>
 
@@ -22,7 +22,6 @@ class Visualizer {
     var heatMask = IntArray(64)
 
     var showAllSquares: Boolean
-    var emptySquareFiltering = true
 
     var orientation = 0 // 0 = White POV, 1 = Black POV
     val display: Game
@@ -39,6 +38,21 @@ class Visualizer {
         this.orientation = 0
         this.lastMoveMask = display.board.lastMove?: Pair(-1,-1)
 
+    }
+
+    fun clearAllMasks(): Boolean {
+        typeFilter.clear()
+        colorFilter.clear()
+        positionFilter.clear()
+        Filters.clear()
+        lastMoveMask = Pair(-1,-1)
+        moveSquareMask.clear()
+        heatMask = IntArray(64)
+        mask.clear()
+        checkedKingMask = -1
+
+
+        return true
     }
 
 //todo: last move highlight mask
@@ -94,14 +108,7 @@ class Visualizer {
 
         updateCustomMask()
     }
-    fun clearAllMasks(): Boolean {
-        typeFilter.clear()
-        colorFilter.clear()
-        positionFilter.clear()
-        Filters.clear()
-        lastMoveMask = Pair(-1,-1)
-        return true
-    }
+
 
         //todo: need to add better command parsing to allow manipulation of moveMasks and lastMove masks
     fun setNewOrientation(orientation: Int): Boolean {
