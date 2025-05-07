@@ -1,5 +1,5 @@
 package BoardUtils
-import Game.Piece
+import Base.Piece
 import UI.Parser.Companion.pieceColors
 import UI.Parser.Companion.pieceTypes
 import kotlin.math.abs
@@ -52,102 +52,7 @@ fun pieceCode(color: Int, type: Int): UInt {
 // -----------------------------
 
 // ---------- Moves ----------
-object Move {
-    fun encode(startSquare: Int, endSquare: Int, flags: Int = 0): move {
-        return  (startSquare shl START_SQUARE_BIT) or (endSquare shl END_SQUARE_BIT) or  (flags shl FLAGS_BIT)
 
-    }
-    fun getStart(move: move): Int {
-        return (move and START_SQUARE_SELECTOR) shr START_SQUARE_BIT
-    }
-    fun getEnd(move: move): Int {
-        return (move and END_SQUARE_SELECTOR) shr END_SQUARE_BIT
-    }
-    fun getFlags(move: move): Int {
-        return (move and FLAGS_SELECTOR) shr FLAGS_BIT
-    }
-
-    fun getFlagNames(move: move): List<String> {
-        val names = mutableListOf<String>()
-        if (isCapture(move)) {
-            names.add("Capture")
-        }
-        if (isEnPassant(move)) {
-            names.add("En Passant")
-        }
-        if (isPromotion(move)) {
-            names.add("Promotion")
-        }
-        if (isCastle(move)) {
-            names.add("Castle")
-        }
-        if (names.isEmpty()){
-            names.add("Quiet Move")
-        }
-        return names
-    }
-    fun encodeFlags(
-        capture: Boolean = false,
-        castle: Boolean = false,
-        //check: Boolean = false,
-        //checkmate: Boolean = false,
-        promotion: Boolean = false,
-        enpassant: Boolean = false
-    ): Int {
-        return ((if (capture) 1 else 0) shl CAPTURE_BIT) or
-                ((if (castle) 1 else 0) shl CASTLE_BIT) or
-               // ((if (check) 1 else 0) shl CHECK_BIT) or
-               // ((if (checkmate) 1 else 0) shl CHECKMATE_BIT) or
-                ((if (promotion) 1 else 0) shl PROMOTION_BIT) or
-                ((if (enpassant) 1 else 0) shl ENPASSANT_BIT)
-    }
-    fun isCapture (move: move): Boolean {
-        return getFlags(move) and CAPTURE_FLAG != 0
-    }
-    fun isCastle (move: move): Boolean {
-        return getFlags(move) and CASTLE_FLAG != 0
-    }
-//    fun isCheck (move: move): Boolean {
-//        return getFlags(move) and CHECK_FLAG != 0
-//    }
-//    fun isCheckMate (move: move): Boolean {
-//        return getFlags(move) and CHECKMATE_FLAG != 0
-//    }
-    fun isPromotion (move: move): Boolean {
-        return getFlags(move) and PROMOTION_FLAG != 0
-    }
-    fun isEnPassant(move: move): Boolean {
-        return getFlags(move) and ENPASSANT_FLAG != 0
-    }
-    fun isQuiet(move: move): Boolean {
-        return getFlags(move) and (CAPTURE_FLAG or PROMOTION_FLAG or CASTLE_FLAG or ENPASSANT_FLAG) == 0
-    }
-
-    private const val START_SQUARE_BIT = 0
-    private const val END_SQUARE_BIT = 6
-    private const val FLAGS_BIT = 12
-
-    private const val START_SQUARE_SELECTOR =   0b000000000000111111
-    private const val END_SQUARE_SELECTOR =     0b000000111111000000
-    private const val FLAGS_SELECTOR =          0b111111000000000000
-
-    // 000000 000000 000000
-
-    private const val CAPTURE_BIT = 0
-    private const val CASTLE_BIT = 1
-    private const val CHECK_BIT = 2
-    private const val CHECKMATE_BIT = 3
-    private const val PROMOTION_BIT = 4
-    private const val ENPASSANT_BIT = 5
-
-    private const val CAPTURE_FLAG =    1 shl CAPTURE_BIT         // 0b0000000001
-    private const val CASTLE_FLAG =     1 shl CASTLE_BIT          // 0b0000000010
-    private const val CHECK_FLAG =      1 shl CHECK_BIT           // 0b0000000100
-    private const val CHECKMATE_FLAG =  1 shl CHECKMATE_BIT       // 0b0000001000
-    private const val PROMOTION_FLAG =  1 shl PROMOTION_BIT       // 0b0000010000
-    private const val ENPASSANT_FLAG =  1 shl ENPASSANT_BIT       // 0b0000100000
-
-}
 
 
 
@@ -178,11 +83,14 @@ fun isOnDiffRow(origin: Int, endSquare: Int): Boolean {
 fun isOnDiffCol(origin: Int, endSquare: Int): Boolean {
     return colDistance(origin, endSquare) != 0
 }
+fun isDiagonalMove(origin: Int, endSquare: Int): Boolean {
+    return rowDistance(origin, endSquare) == colDistance(origin, endSquare)
+}
 
 fun isOnSide(square: Int): Boolean = (square % 8 == 0 || square % 8 == 7)
 fun isOnBack(square: Int): Boolean {
     val yPos = convertIntToPairSquare(square).second
-    return yPos % 8 == 0 || yPos % 8 == 7
+    return yPos == 0 || yPos == 7
 }
 
 fun doesWrap(origin: Int, endSquare: Int): Boolean = ((colDistance(origin, endSquare) > 2))
@@ -205,9 +113,6 @@ fun getPawnDirection(color: Int): Int = when (color) {
      WHITE -> 1
      else -> 0
 }
-
-
-
 
 fun convertToBinary(number: Int): UInt {
 

@@ -1,6 +1,6 @@
 package player
 
-import Game.MoveGenerator
+import Base.MoveGenerator
 
 abstract class Player {
     abstract fun getName(): String

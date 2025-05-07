@@ -1,4 +1,4 @@
-package Game
+package Base
 import BoardUtils.*
 
 class Board {
@@ -8,7 +8,7 @@ class Board {
     private var whiteKingPostion: Int? = null
     private var blackKingPostion: Int? = null
 
-    private var controller: Game? = null
+
     public val moveGenerator = MoveGenerator(this)
 
     private var pieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
@@ -21,9 +21,7 @@ class Board {
     var lastMove: Pair<Int,Int>? = null
     private val rookDestinationHolder = Holder<Int>()
 
-    constructor(controller: Game) {
-        this.controller = controller // each board object created gets a permanent Game.Game object
-    }
+
 
     /**
      * Initializes this board's bit boards.
@@ -131,28 +129,27 @@ class Board {
      * @return true if a piece was moved
      */
 
-    fun makeMove(origin: Int, endSquare: Int): Boolean {
-        require(isInBounds(origin) && isInBounds(endSquare)) {"Impossible move: $origin -> $endSquare"}
-        val movingPiece = pieces[origin]
-        if (!movingPiece.isEmpty() && origin != endSquare) {
-            val validMoves = generateMoves(movingPiece.color)
-
-            if (validMoves.any { Move.getStart(it) == origin && Move.getEnd(it) == endSquare}) {
-                val move = validMoves.find { Move.getStart(it) == origin && Move.getEnd(it) == endSquare } as Int
-                handleMoveTypes(movingPiece, origin, endSquare)
-                println(getBoardString())
-                println("This move is: " + Move.getFlagNames(move).joinToString())
-                //println("$whitePieceCount,  $blackPieceCount")
-                lastMove = Pair(origin,endSquare)
-                return true
-                    }
-            }
-
-        return false
-
+    fun makeMove(move: move) {
+        makeMove(move.start(), move.end(), move.getPromotion())
+        println("This move is: ${move.getString()}")
     }
 
-    private fun handleMoveTypes(movingPiece: Piece, origin: Int, endSquare: Int) {
+    fun makeMove(origin: Int, endSquare: Int, promotionType: Int = QUEEN): Boolean {
+        require(isInBounds(origin) && isInBounds(endSquare)) {"Impossible move: $origin -> $endSquare"}
+        require(origin != endSquare) {"Piece cannot null-move: $origin -> $endSquare"}
+        val movingPiece = pieces[origin]
+        require(movingPiece.isOccupied()) {"There is no piece here: $origin -> $endSquare"}
+
+
+        handleMoveTypes(movingPiece, origin, endSquare, promotionType)
+        lastMove = Pair(origin,endSquare)
+
+                //println("$whitePieceCount,  $blackPieceCount")
+
+        return true
+    }
+
+    private fun handleMoveTypes(movingPiece: Piece, origin: Int, endSquare: Int, promotionType: Int = QUEEN) {
         removePiece(origin)
         removePiece(endSquare)
 
@@ -162,7 +159,7 @@ class Board {
             makeMove(getAdjacentRookSquare(endSquare), rookDestinationHolder.drop() ?: -1)
         }
         if (isPromotionMove(movingPiece, endSquare))
-            addPiece(movingPiece.promoteTo(QUEEN), endSquare) else addPiece(movingPiece.moveThisPiece(), endSquare)
+            addPiece(movingPiece.promoteTo(promotionType), endSquare) else addPiece(movingPiece.moveThisPiece(), endSquare)
 
 
         updateEnpassantSquare(origin, endSquare, movingPiece)
@@ -215,20 +212,14 @@ class Board {
     }
 
     fun tryMove(origin: Int, endSquare: Int) {
+
         //moveGenerator.benchmarkMovegen()
-        if (controller?.turn == getPieceColorFromSquare(origin) || controller == null) {
-            if (makeMove(origin,endSquare)) {
-                controller?.changeTurn()
-            }
-        }
+        makeMove(origin,endSquare)
+
     } // move out of class
 
-    fun generateMoves(color: Int): IntArray {
-        return moveGenerator.genAllLegalMoves(color)
-    }
-
     /**
-     * @return an array containing each piece Bit Game.Board.
+     * @return an array containing pieces of the specified team (all if left blank)
      */
 
     fun fetchPieces(team: Int = NO_COLOR): Array<Piece> {

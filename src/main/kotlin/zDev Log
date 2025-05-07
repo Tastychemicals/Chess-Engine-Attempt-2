@@ -39,7 +39,7 @@
 
 
    todo:
-        - Allow Game.Board class's essential operations to update its bitBoards
+        - Allow Base.Board class's essential operations to update its bitBoards
         -
 
 

@@ -1,4 +1,4 @@
-package Game
+package Base
 import BoardUtils.*
 
 @JvmInline

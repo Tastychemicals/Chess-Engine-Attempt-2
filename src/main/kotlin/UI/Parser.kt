@@ -2,8 +2,7 @@ package UI
 
 import BoardUtils.BISHOP
 import BoardUtils.BOARD_SIZE
-import BoardUtils.BoardHelper
-import Game.Game
+import Base.Game
 import BoardUtils.*
 import BoardUtils.convertPairToIntSquare
 import javafx.scene.control.TextArea
@@ -11,7 +10,7 @@ import kotlin.random.Random
 
 class Parser {
     /**
-     * ------- Class used explicitly by the .GUI --------
+     * ------- Class used explicitly by the GUI --------
      */
     companion object {
         // Operations
@@ -36,7 +35,9 @@ class Parser {
             "new",
             "squares",
             "l",
-            "s"
+            "s",
+            "d",
+            "kill"
         )
 
         // Parameters
@@ -235,11 +236,15 @@ class Parser {
                 "turn" -> turnChanged = reference.changeTurn(color)
                 "orient" ->  orientationChanged = visualizer.setNewOrientation(1 - color)
                 "squares" -> squareNumsShowing = visualizer.setShowingSquares()
-                "new" ->   newGameStarted = reference.startNewGame()
+                "new" ->   { newGameStarted = true ; reference.startNewGame() }
                 "l" -> if (fen != NO_PARAM.toString()) reference.startNewGame(fen)
                 "s" -> when (fen) {
                     else -> loadPinsPosition1()
                 }
+                "d" -> when (fen) {
+                    else -> loadPawnsPosition2()
+                }
+                "kill" -> Game.Sessions.killAllSessions()
                 else -> commandNotFound = true
             }
 
@@ -288,7 +293,7 @@ class Parser {
 
     fun loadPinsPosition1() {
         //visualizer.setNewOrientation()
-        visualizer.setNewOrientation(reference.player1color)
+        visualizer.setNewOrientation(Game.players.player1color)
         reference.startNewGame()
         reference.board.clearBoard()
         reference.board.addPiece(BLACK, KING, 49)
@@ -301,10 +306,27 @@ class Parser {
         reference.board.addPiece(BLACK, ROOK, 32)
         reference.board.addPiece(WHITE, PAWN, 59)
         reference.board.addPiece(WHITE, KNIGHT, 24)
+    }
+    fun loadPawnsPosition2() {
+        //visualizer.setNewOrientation()
+        visualizer.setNewOrientation(Game.players.player1color)
+        reference.startNewGame()
+        Thread.sleep(400)
+        reference.board.clearBoard()
+        reference.board.addPiece(BLACK, PAWN, 15)
+        reference.board.addPiece(BLACK, PAWN, 8)
+        reference.board.addPiece(BLACK, PAWN, 13)
+        reference.board.addPiece(BLACK, PAWN, 12)
+
+        reference.board.addPiece(WHITE, PAWN, 55)
+        reference.board.addPiece(WHITE, PAWN, 54)
+        reference.board.addPiece(WHITE, PAWN, 53)
+        reference.board.addPiece(WHITE, PAWN, 52)
+        reference.board.addPiece(WHITE, PAWN, 51)
 
 
-
-
+        reference.board.addPiece(BLACK, KING, 49)
+        reference.board.addPiece(WHITE, KING, 38)
     }
 
 

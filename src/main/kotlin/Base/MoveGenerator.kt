@@ -1,12 +1,11 @@
-package Game
+package Base
 import BoardUtils.*
-import Game.MoveGenerator.MoveInstructions
+import Base.MoveGenerator.MoveInstructions
 import kotlin.collections.filter
 import kotlin.collections.mutableListOf
 import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.sign
-import kotlin.system.measureNanoTime
 
 typealias MoveFilter = (Int, Int, Int) -> Boolean
 typealias alertTrigger = (Int, Int, Piece, Int, MutableList<Int>) -> Boolean
@@ -37,6 +36,7 @@ class MoveGenerator(board: Board) {
      */
     val sliderMoveFilter = { startSquare: Int, newSquare: Int, pastSquare: Int -> isValidSliderMove(startSquare, newSquare, pastSquare) }
     val leaperMoveFilter = { startSquare: Int, newSquare: Int, pastSquare: Int -> isValidLeaperMove(startSquare, newSquare, pastSquare) }
+    val emptySquareFilter = { startSquare: Int, newSquare: Int, pastSquare: Int -> getPiece(newSquare).isEmpty() }
 
     val pawnAttackFilter = { startSquare: Int, newSquare: Int, pastSquare: Int ->  isValidPawnCapture(startSquare, newSquare, getPiece(startSquare).fetchColor()) }
     val pinRayFilter = { startSquare: Int, newSquare: Int, pastSquare: Int ->
@@ -66,6 +66,7 @@ class MoveGenerator(board: Board) {
     val kingXrayInstructions = MoveInstructions(queenMoveInfo, pinRayFilter, XRAY_CONDITION)
     val pawnAttackCheckInstructions =  MoveInstructions(pawnAttackInfo, pawnAttackFilter)
     val castlingInstructions = MoveInstructions(castlingMoveInfo, sliderMoveFilter, ILLEGAL_CAPTURES)
+    val potentialCheckInstructions = MoveInstructions(queenMoveInfo, emptySquareFilter)
 
     //------------------------------------------------------------------------------------------------------------------
     /**
@@ -104,6 +105,7 @@ class MoveGenerator(board: Board) {
                 || piece.isOccupied() && !piece.isRook()
 
     }
+    val addAllCondition: alertCondition = {color: Int, square: Int, distance, piece: Piece -> true}
 
     val pieceIsPawnCondition: alertCondition = {color: Int, _, _, piece: Piece -> pieceIsEnemyCondition(color, NO_PARAM, NO_PARAM, piece) && piece.isPawn()}
     val pieceIsKnightCondition: alertCondition = {color: Int, _, _, piece: Piece ->  pieceIsEnemyCondition(color, NO_PARAM, NO_PARAM, piece) && piece.isKnight()}
@@ -115,7 +117,7 @@ class MoveGenerator(board: Board) {
     val pinTrigger: alertTrigger = { color: Int, square: Int, piece: Piece, vector: Int, alerts: MutableList<Int> -> sliderMatchesVector(piece, vector) && !piece.isColor(color) }
     val sliderThreatTrigger: alertTrigger = { color: Int, square: Int, piece: Piece, vector: Int, alerts: MutableList<Int> -> sliderMatchesVector(piece, vector) && !piece.isColor(color) }
     val alertFoundTrigger: alertTrigger = { color: Int, square: Int, piece: Piece, vector: Int, alerts: MutableList<Int>  -> alerts.isNotEmpty() }
-    val edgeTouchedTrigger: alertTrigger = { _, square: Int, piece: Piece, vector: Int, _  -> isOnSide(square) }
+    val edgeTouchedTrigger: alertTrigger = { _, square: Int, piece: Piece, vector: Int, _  -> isOnSide(square) || isOnBack(square) }
     val blockageTrigger: alertTrigger = { color: Int, square: Int, piece: Piece, vector: Int, alerts: MutableList<Int> -> piece.isOccupied()}
     val collisionFoundTrigger: alertTrigger = {color: Int, square: Int, piece: Piece, vector: Int, alerts: MutableList<Int> ->
         piece.isOccupied()
@@ -135,6 +137,7 @@ class MoveGenerator(board: Board) {
     val knightThreatRayInstructions = RayInstructions(knightMoveInstructions, pieceIsKnightCondition, alertFoundTrigger, NORMAL_RAY)
     val pawnThreatRayInstructions = RayInstructions(pawnAttackCheckInstructions, pieceIsPawnCondition, alertFoundTrigger, NORMAL_RAY)
     val castlingRayInstructions = RayInstructions(castlingInstructions, castlingCondition, collisionFoundTrigger, CASTLE_RAY)
+    //val potentialCheckRayInstructions = RayInstructions(potentialCheckInstructions, addAllCondition, edgeTouchedTrigger)
     //------------------------------------------------------------------------------------------------------------------
 
     private var referenceBoard = board
@@ -240,7 +243,7 @@ class MoveGenerator(board: Board) {
         //val allMoves = HashMap<Int,MutableSet<Int>>()
         moveBuffer.clear()
         var totalMoves = 0
-        val start = measureNanoTime {
+        //val start = measureNanoTime {
 
         val pieces = getAllPieces(color)
         kingSquare = getKingSquare(color)
@@ -263,22 +266,31 @@ class MoveGenerator(board: Board) {
             for (endSquare in 0.until(BOARD_SIZE)) {
                 if (moves and (1L shl endSquare) != 0L) {
                     val pieceOnEnd = getPiece(endSquare)
-                    val flags = Move.encodeFlags(
+                    var flags = Move.encodeFlags(
                         pieceOnEnd.isOccupied(),
                         (piece.isKing() && abs(square - endSquare) == CASTLE_MOVE_DISTANCE),
                         (piece.isPawn() && isOnBack(endSquare)),
                         (piece.isPawn() && pieceOnEnd.isEmpty() && isDiagonalMove(square, endSquare))
                     )
-                    addMove(Move.encode(square, endSquare, flags))
+
+                    val move: move = Move.encode(square, endSquare, flags)
+                    if (move.isPromotion()) {
+                        addMove( Move.addFlags(move, Move.addPromotionType(flags, QUEEN)))
+                        addMove( Move.addFlags(move, Move.addPromotionType(flags, KNIGHT)))
+                        addMove( Move.addFlags(move, Move.addPromotionType(flags, ROOK)))
+                        addMove( Move.addFlags(move, Move.addPromotionType(flags, BISHOP)))
+                    } else {
+                        addMove(move)
+                    }
                     totalMoves++
                 }
             }
         }
         //println(totalMoves)
-        }
-        println("rays casted on iteration: $raysCasted with a time of: ${start/1_000.0}micros")
+        //}
+        //println("rays casted on iteration: $raysCasted with a time of: ${start/1_000.0}micros")
         println("Total moves found: $totalMoves")
-        println("Total moves in buffer: ${getMoveBufferFilledSpaces()}")
+       println("Total moves in buffer: ${getMoveBufferFilledSpaces()}")
         return moveBuffer
     }
 
@@ -700,10 +712,10 @@ class MoveGenerator(board: Board) {
             if (!onlyCaptures) {
                 if (isVerticalVector(vector) && isEmptySquare(newSquare)) {
                     if (rowDistance(startSquare, newSquare) == 1) {
-                        canJump = true
+                        canJump = !isOnBack(newSquare)
                         validSquares = validSquares or (1L shl newSquare)
                     } else {
-                        if (canJump && !piece.hasMoved) {
+                        if (canJump && !piece.hasMoved ) {
                             validSquares = validSquares or (1L shl newSquare)
                         }
                     }
@@ -796,9 +808,7 @@ class MoveGenerator(board: Board) {
         //&& piece.isColor(getOppositeColor(piece.color))
     }
 
-    private fun isDiagonalMove(origin: Int, endSquare: Int): Boolean {
-        return rowDistance(origin, endSquare) == colDistance(origin, endSquare)
-    }
+
     private fun isLineMove(origin: Int, endSquare: Int): Boolean {
         return (rowDistance(origin, endSquare) == 0 && colDistance(origin, endSquare) != 0) ||
                 (rowDistance(origin, endSquare) != 0 && colDistance(origin, endSquare) == 0)

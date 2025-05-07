@@ -1,5 +1,4 @@
 import javafx.application.Application
-import javafx.application.Platform
 import javafx.event.ActionEvent
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
@@ -13,17 +12,15 @@ import javafx.scene.control.TextField
 import javafx.scene.image.Image
 import javafx.scene.paint.Color
 import javafx.stage.Stage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import BoardUtils.*
-import Game.Game
-import Game.Piece
+import Base.Game
+import Base.Piece
 import UI.Parser
 import UI.Visualizer
 import javafx.animation.AnimationTimer
 import javafx.scene.input.KeyCode
 import javafx.scene.text.Font
+import kotlin.math.abs
 
 
 class GUI : Application() {
@@ -72,6 +69,7 @@ class GUI : Application() {
 
     @FXML
     fun openMenu(e: ActionEvent) {
+        Game.Sessions.killAllSessions()
         root = FXMLLoader.load(javaClass.getResource("Menu2.fxml"))
         stage = ((e.source as Node).scene.window) as Stage
         scene = Scene(root)
@@ -82,17 +80,13 @@ class GUI : Application() {
     @FXML
     fun newGame() {
        // println("before orientation: " + visualizer.orientation)
-
-        CoroutineScope(Dispatchers.Default).launch{
+        game.setNewVisualizer(visualizer)
             game.startNewGame()
-            visualizer.setNewOrientation(game.player1color)
+
+           // visualizer.setNewOrientation(Game.players.player1color)
             log.text = ""
 
-        }
-
-
-
-        println("set orientation: " + visualizer.orientation)
+        //println("set orientation: " + visualizer.orientation)
         visualizer.clearAllMasks()
     }
 
@@ -140,8 +134,11 @@ class GUI : Application() {
 
         canvas.setOnMouseReleased { e ->
             val endSquare = convertPairToIntSquare(adjustForOrientation(getSquareFromPixels(e.x,e.y)))
-            if (endSquare != -1) {
+            if (endSquare != -1 && endSquare != clickedSquare) {
+
+               // game.receiveMove(Move.encode(clickedSquare, endSquare))
                 game.board.tryMove(clickedSquare, endSquare)
+
 
             }
             clickedSquare = -1

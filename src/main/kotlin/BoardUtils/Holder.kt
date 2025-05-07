@@ -5,8 +5,15 @@ package BoardUtils
  */
 
 class Holder<T> {
+    constructor()
     private var value: T? = null
     private var lastValue: T? = null
+
+
+    private constructor(value: T?, lastValue: T?) {
+        this.value = value
+        this.lastValue = lastValue
+    }
 
     /**
      * Holds a [value].
@@ -44,7 +51,7 @@ class Holder<T> {
     }
 
     /**
-     * Clears the Holder's [value] and [lastValue]
+     * Clears the Holder's [value] and [lastValue].
      */
     fun forget() {
         value = null
@@ -59,7 +66,7 @@ class Holder<T> {
     }
 
     /**
-     * Checks if the Holder is holding a different [T]
+     * Checks if the Holder is holding a different [T].
      */
     fun hasValueChanged(): Boolean {
         return this.value != this.lastValue
@@ -81,4 +88,9 @@ class Holder<T> {
         result = 31 * result + (lastValue?.hashCode() ?: 0)
         return result
     }
+
+    /**
+     * returns a clone of this Holder.
+     */
+    fun clone(): Holder<T> = Holder<T>(value, lastValue)
 }

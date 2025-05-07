@@ -1,9 +1,10 @@
 package UI
 
 import BoardUtils.BOARD_SIZE
-import BoardUtils.Move
-import Game.Game
-import Game.Piece
+import BoardUtils.end
+import BoardUtils.start
+import Base.Game
+import Base.Piece
 
 class Visualizer {
     /**
@@ -96,7 +97,7 @@ class Visualizer {
     }
 
     fun addMoveSquareMask(square: Int): Boolean {
-        val moves = display.board.moveGenerator.genAllLegalMoves(display.board.fetchPiece(square).color).filter {  Move.getStart(it) == square }.map { it -> Move.getEnd(it)}.toMutableSet()
+        val moves = display.board.moveGenerator.genAllLegalMoves(display.board.fetchPiece(square).color).filter {  it.start() == square }.map { it -> it.end()}.toMutableSet()
 
         moveSquareMask = moves
 
