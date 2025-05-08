@@ -29,7 +29,7 @@ class Game {
         var isUserGame = false
         var isTwoUsersGame = false
 
-        val player1: Engine = RandomMover()
+        val player1: Engine = Capturer()
         val player2: Engine = Capturer()
 
         var player1color = -1

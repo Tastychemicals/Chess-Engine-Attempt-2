@@ -10,7 +10,7 @@ import Base.Game
 import Base.MoveGenerator
 import kotlin.random.Random
 
-class Capturer : Engine {
+class Capturer : Engine() {
     val moveGenerator = MoveGenerator(Board())
     var team = -1
     var board = Board()
@@ -49,8 +49,6 @@ class Capturer : Engine {
         receiver.hold(move)
     }
 
-    fun getRandom(moves: List<move>): move {
-        return if (moves.size - 1 == 0 ) moves[0] else moves[Random.nextInt(0, moves.size - 1)]
-    }
+
 
 }

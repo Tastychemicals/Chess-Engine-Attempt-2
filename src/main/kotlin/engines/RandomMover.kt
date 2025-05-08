@@ -12,7 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.io.println
 
-class RandomMover : Engine {
+class RandomMover : Engine() {
     val moveGenerator = MoveGenerator(Board())
     var team = -1
     var board = Board()
@@ -50,7 +50,7 @@ class RandomMover : Engine {
     override fun makePlayy(receiver: Holder<move>) {
 
         val moves = moveGenerator.genAllLegalMoves(team).filter { it != 0 }
-        val random = if (moves.size - 1 == 0 ) moves[0] else moves[Random.nextInt(0, moves.size - 1)]
+        val random = if (moves.size - 1 == 0 ) moves[0] else getRandom(moves)
         println("Trying: " + random.getString() )
         receiver.hold(random)
 

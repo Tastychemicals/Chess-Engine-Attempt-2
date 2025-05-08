@@ -4,14 +4,19 @@ import BoardUtils.Holder
 import BoardUtils.move
 import Base.Board
 import Base.Game
+import kotlin.random.Random
 
-interface Engine {
+abstract class Engine {
 
-    fun prepare(team: Int, game: Game)
+    abstract fun prepare(team: Int, game: Game)
 
-    fun start()
-    fun makePlay(timeLimit: Long, board: Board, receiver: Holder<Int>)
+    abstract fun start()
+    abstract fun makePlay(timeLimit: Long, board: Board, receiver: Holder<Int>)
 
-    fun getName(): String
-    fun makePlayy(receiver: Holder<move>)
+    abstract fun getName(): String
+    abstract fun makePlayy(receiver: Holder<move>)
+
+    fun getRandom(moves: List<move>): move {
+        return if (moves.size - 1 == 0 ) moves[0] else moves[Random.nextInt(0, moves.size - 1)]
+    }
 }
