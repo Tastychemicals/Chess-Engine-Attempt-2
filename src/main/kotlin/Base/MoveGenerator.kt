@@ -27,7 +27,7 @@ class MoveGenerator(board: Board) {
 
 
     private val noMoveInfo = MovementInfo(pieceType = EMPTY)
-    private val pawnAttackInfo = MovementInfo(-9,-7,7,9, pieceType = BISHOP, maxDistance = 1)
+    private val pawnAttackInfo = MovementInfo(7,9, -7, -9, pieceType = BISHOP, maxDistance = 1)
     private val castlingMoveInfo = MovementInfo(-1,1, pieceType = ROOK, maxDistance = 4)
     //------------------------------------------------------------------------------------------------------------------
 
@@ -128,10 +128,14 @@ class MoveGenerator(board: Board) {
      *                                  Ray trail Info (What should the trail add?)
      */
     val vectorTrailInfo: mappingInfo = { currentSquare: Int, distance: Int, vector: Int  -> vector}
+//    val emptySquareTrailInfo: mappingInfo = { currentSquare: Int, distance: Int, vector: Int  -> square}
     //------------------------------------------------------------------------------------------------------------------
     /**
                                     Ray Instructions (how should the ray cast?)
      */
+    val reverseKnightAttackRayInstructions = RayInstructions(knightMoveInstructions, addAllCondition, collisionFoundTrigger, NORMAL_RAY)
+    val reverseSliderAttackRayInstructions = RayInstructions(queenMoveInstructions, addAllCondition, collisionFoundTrigger, NORMAL_RAY)
+
     val pinRayInstructions = RayInstructions(kingXrayInstructions, pinCondition, pinTrigger, MAPPING_RAY, vectorTrailInfo)
     val sliderThreatRayInstructions = RayInstructions(queenMoveInstructions, sliderThreatCondition, sliderThreatTrigger, NORMAL_RAY)
     val knightThreatRayInstructions = RayInstructions(knightMoveInstructions, pieceIsKnightCondition, alertFoundTrigger, NORMAL_RAY)
@@ -240,20 +244,24 @@ class MoveGenerator(board: Board) {
      * the main outlet called in board
      */
     fun genAllLegalMoves(color: Int): IntArray {
-        //val allMoves = HashMap<Int,MutableSet<Int>>()
-        moveBuffer.clear()
         var totalMoves = 0
-        //val start = measureNanoTime {
-
         val pieces = getAllPieces(color)
+        val enemyColor = getOppositeColor(color)
+        val enemyKingSquare = getKingSquare(enemyColor)
+        moveBuffer.clear()
+        //val start = measureNanoTime {
         kingSquare = getKingSquare(color)
-        require (kingSquare != null) {"$color King does not exist"}
+        require (kingSquare != null) {"${typeNames[color]} King does not exist"}
+        require (enemyKingSquare != null) {"${typeNames[color]} King does not exist"}
         raysCasted = 0
 
         pins = castPinRay(kingSquare!!, color)
         enemyAttackSquares = getOpponentAttackSquares(color)
         kingDefendingSquares = castThreatRay(kingSquare!!, color)
         attackedKing = getCheckedKing(color)
+
+        val knightCheckSquares = castRay(enemyKingSquare, color, reverseKnightAttackRayInstructions)
+        val sliderCheckSquares = castRay(enemyKingSquare, color, reverseSliderAttackRayInstructions)
 
 
         for (square in pieces.indices) {
@@ -266,11 +274,19 @@ class MoveGenerator(board: Board) {
             for (endSquare in 0.until(BOARD_SIZE)) {
                 if (moves and (1L shl endSquare) != 0L) {
                     val pieceOnEnd = getPiece(endSquare)
-                    var flags = Move.encodeFlags(
+                    val moveIsCheck = when {
+                        piece.isSlider() -> endSquare in sliderCheckSquares.keys && sliderMatchesVector(piece, vectorBetween(square, endSquare));
+                        piece.isPawn() -> sliderCheckSquares.keys.contains(square + (pawnAttackInfo.vector1 * getPawnDirection(color)))
+                                || sliderCheckSquares.keys.contains(square + (pawnAttackInfo.vector2 * getPawnDirection(color)))
+                        piece.isKnight() -> endSquare in knightCheckSquares.keys;
+                        else -> false
+                    }
+                    val flags = Move.encodeFlags(
                         pieceOnEnd.isOccupied(),
                         (piece.isKing() && abs(square - endSquare) == CASTLE_MOVE_DISTANCE),
                         (piece.isPawn() && isOnBack(endSquare)),
-                        (piece.isPawn() && pieceOnEnd.isEmpty() && isDiagonalMove(square, endSquare))
+                        (piece.isPawn() && pieceOnEnd.isEmpty() && isDiagonalMove(square, endSquare)),
+                        moveIsCheck
                     )
 
                     val move: move = Move.encode(square, endSquare, flags)
@@ -290,7 +306,7 @@ class MoveGenerator(board: Board) {
         //}
         //println("rays casted on iteration: $raysCasted with a time of: ${start/1_000.0}micros")
         println("Total moves found: $totalMoves")
-       println("Total moves in buffer: ${getMoveBufferFilledSpaces()}")
+        println("Total moves in buffer: ${getMoveBufferFilledSpaces()}")
         return moveBuffer
     }
 
@@ -478,13 +494,13 @@ class MoveGenerator(board: Board) {
         val found = mutableMapOf<Int,Int>()
         val alerts = mutableListOf<Int>()
         val rays = crawlMoves(startSquare, color, instructions)
-        var distance = 0
+        var distance: Int
 
         raysCasted++
 
 
 
-        var vector = 0
+        var vector: Int
         var direction = 0
         val vectors = instructions.moveInfo.getVectors()
         for (ray in rays) {
@@ -702,6 +718,7 @@ class MoveGenerator(board: Board) {
 
         for (vector in pawnMoveInfo.getVectors()) {
             val newSquare = startSquare + (vector * getPawnDirection(piece.color))
+            if (!isInBounds(newSquare)) continue
 
 
             if ((isDiagonalVector(vector)
@@ -715,7 +732,7 @@ class MoveGenerator(board: Board) {
                         canJump = !isOnBack(newSquare)
                         validSquares = validSquares or (1L shl newSquare)
                     } else {
-                        if (canJump && !piece.hasMoved ) {
+                        if (canJump && !piece.hasMoved) {
                             validSquares = validSquares or (1L shl newSquare)
                         }
                     }

@@ -29,7 +29,7 @@ class Game {
         var isUserGame = false
         var isTwoUsersGame = false
 
-        val player1: Engine = Capturer()
+        val player1: Engine = CapturerWithCheck()
         val player2: Engine = Capturer()
 
         var player1color = -1
@@ -89,10 +89,11 @@ class Game {
             isOngoing = true
 
 
-
-
-
             board.loadBoard(fen)
+            //repeat(1000) {board.moveGenerator.genAllLegalMoves(BLACK)}
+            //repeat(10) {board.moveGenerator.benchmarkMovegen()}
+
+
             println(board.getBoardString(players.player1color))
             println("New Game Started.")
             println("Turn: WHITE")
@@ -141,8 +142,7 @@ class Game {
 
 
 
-        //repeat(1000) {board.moveGenerator.genAllLegalMoves(BLACK)}
-        //repeat(10) {board.moveGenerator.benchmarkMovegen()}
+
 
     }
 
@@ -155,6 +155,10 @@ class Game {
             changeTurn()
             visualizer.updateCustomMask()
             println(board.getBoardString(players.player1color))
+    }
+
+    fun runGame() {
+
     }
 
 

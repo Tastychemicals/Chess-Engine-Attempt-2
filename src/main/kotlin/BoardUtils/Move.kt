@@ -15,13 +15,15 @@ private const val CAPTURE_BIT = 0
 private const val CASTLE_BIT = 1
 private const val PROMOTION_BIT = 2
 private const val ENPASSANT_BIT = 3
-private const val PROMOTION_TYPE_BIT = 4
+private const val CHECK_BIT = 4
+private const val PROMOTION_TYPE_BIT = 5
 
-private const val CAPTURE_FLAG =    1 shl CAPTURE_BIT               // 0b0000000001
-private const val CASTLE_FLAG =     1 shl CASTLE_BIT                // 0b0000000010
-private const val PROMOTION_FLAG =  1 shl PROMOTION_BIT             // 0b0000010000
-private const val ENPASSANT_FLAG =  1 shl ENPASSANT_BIT             // 0b0000100000
-private const val PROMOTION_TYPE_FLAG = 0b111 shl PROMOTION_TYPE_BIT// 0b0111000000
+private const val CAPTURE_FLAG =    1 shl CAPTURE_BIT               // 0b00000001
+private const val CASTLE_FLAG =     1 shl CASTLE_BIT                // 0b00000010
+private const val PROMOTION_FLAG =  1 shl PROMOTION_BIT             // 0b00000100
+private const val ENPASSANT_FLAG =  1 shl ENPASSANT_BIT             // 0b00001000
+private const val CHECK_FLAG =      1 shl CHECK_BIT                 // 0b00010000
+private const val PROMOTION_TYPE_FLAG = 0b111 shl PROMOTION_TYPE_BIT// 0b11100000
 
 
     object Move {
@@ -33,12 +35,14 @@ private const val PROMOTION_TYPE_FLAG = 0b111 shl PROMOTION_TYPE_BIT// 0b0111000
             castle: Boolean = false,
             promotion: Boolean = false,
             enpassant: Boolean = false,
+            check: Boolean  = false,
             promotionType: Int = EMPTY
         ): Int {
             return ((if (capture) 1 else 0) shl CAPTURE_BIT) or
                     ((if (castle) 1 else 0) shl CASTLE_BIT) or
                     ((if (promotion) 1 else 0) shl PROMOTION_BIT) or
                     ((if (enpassant) 1 else 0) shl ENPASSANT_BIT) or
+                    ((if (check) 1 else 0) shl CHECK_BIT) or
                     ((if (promotionType != EMPTY) promotionType else EMPTY) shl PROMOTION_TYPE_BIT)
         }
 
@@ -61,7 +65,8 @@ private const val PROMOTION_TYPE_FLAG = 0b111 shl PROMOTION_TYPE_BIT// 0b0111000
     fun move.isCastle (): Boolean = this.flags() and CASTLE_FLAG != 0
     fun move.isPromotion (): Boolean = this.flags() and PROMOTION_FLAG != 0
     fun move.isEnPassant(): Boolean  = this.flags() and ENPASSANT_FLAG != 0
-    fun move.isQuiet(): Boolean = this.flags() and (CAPTURE_FLAG or PROMOTION_FLAG or CASTLE_FLAG or ENPASSANT_FLAG) == 0
+    fun move.isCheck(): Boolean  = this.flags() and CHECK_FLAG != 0
+    fun move.isQuiet(): Boolean = this.flags() and (CAPTURE_FLAG or PROMOTION_FLAG or CASTLE_FLAG or ENPASSANT_FLAG or CHECK_FLAG) == 0
 
 
 
@@ -71,6 +76,7 @@ private const val PROMOTION_TYPE_FLAG = 0b111 shl PROMOTION_TYPE_BIT// 0b0111000
         if (isEnPassant()) names.add("En Passant")
         if (isPromotion()) names.add("Promotion to ${typeNames[getPromotion()]}")
         if (isCastle()) names.add("Castle")
+        if (isCheck()) names.add("Check")
         if (names.isEmpty()) names.add("Quiet Move")
 
         return names

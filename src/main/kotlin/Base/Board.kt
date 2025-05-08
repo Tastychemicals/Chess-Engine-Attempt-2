@@ -150,14 +150,14 @@ class Board {
     }
 
     private fun handleMoveTypes(movingPiece: Piece, origin: Int, endSquare: Int, promotionType: Int = QUEEN) {
-        removePiece(origin)
-        removePiece(endSquare)
-
         if (isEnpassantMove(movingPiece, origin, endSquare)) {
             removePiece(getSquareBehind(endSquare, movingPiece.color))
         } else if (isCastleMove(movingPiece, origin, endSquare)) {
             makeMove(getAdjacentRookSquare(endSquare), rookDestinationHolder.drop() ?: -1)
         }
+        removePiece(origin)
+        removePiece(endSquare)
+
         if (isPromotionMove(movingPiece, endSquare))
             addPiece(movingPiece.promoteTo(promotionType), endSquare) else addPiece(movingPiece.moveThisPiece(), endSquare)
 
@@ -197,10 +197,11 @@ class Board {
     }
     private fun isEnpassantMove(piece: Piece, origin: Int, endSquare: Int): Boolean {
         return piece.isPawn()
-                && enpassantSquare != null
+                && enpassantSquare == getSquareBehind(endSquare, piece.color)
                 && isOnDiffRow(origin, endSquare)
                 && isOnDiffCol(origin, endSquare)
                 && fetchPiece(endSquare).isEmpty()
+
 
     }
     private fun isPromotionMove(piece: Piece, endSquare: Int): Boolean {
