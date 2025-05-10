@@ -236,8 +236,8 @@ class Parser {
                 "turn" -> turnChanged = reference.changeTurn(color)
                 "orient" ->  orientationChanged = visualizer.setNewOrientation(1 - color)
                 "squares" -> squareNumsShowing = visualizer.setShowingSquares()
-                "new" ->   { newGameStarted = true ; reference.startNewGame() }
-                "l" -> if (fen != NO_PARAM.toString()) reference.startNewGame(fen)
+                "new" ->   { newGameStarted = true ; reference.prepareToBegin() }
+                "l" -> if (fen != NO_PARAM.toString()) reference.prepareToBegin(fen)
                 "s" -> when (fen) {
                     else -> loadPinsPosition1()
                 }
@@ -294,7 +294,7 @@ class Parser {
     fun loadPinsPosition1() {
         //visualizer.setNewOrientation()
         visualizer.setNewOrientation(Game.players.player1color)
-        reference.startNewGame()
+        reference.prepareToBegin()
         reference.board.clearBoard()
         reference.board.addPiece(BLACK, KING, 49)
         reference.board.addPiece(BLACK, ROOK, 33)
@@ -310,7 +310,7 @@ class Parser {
     fun loadPawnsPosition2() {
         //visualizer.setNewOrientation()
         visualizer.setNewOrientation(Game.players.player1color)
-        reference.startNewGame()
+        reference.prepareToBegin()
         Thread.sleep(400)
         reference.board.clearBoard()
         reference.board.addPiece(BLACK, PAWN, 15)

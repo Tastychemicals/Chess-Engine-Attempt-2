@@ -1,6 +1,5 @@
 package Base
 
-import Base.Game.Sessions.isExpired
 import BoardUtils.*
 import engines.*
 import kotlinx.coroutines.CoroutineScope
@@ -8,59 +7,110 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import player.Player
-import kotlin.math.abs
 import kotlin.random.Random
-import kotlin.random.nextLong
 import kotlin.reflect.KClass
 
 
 class Game {
     companion object {
-        val PLAYER_LIST = listOf(
+        private const val INVALID_ID = -1
+        private val PLAYER_LIST: List<KClass<out player.Player>> = listOf(
             Capturer::class,
             CapturerWithCheck::class,
             MasterOfZeroDepth::class,
             RandomMover::class
         )
-    }
+         enum class Status {
+            UNREADY,
+            READY_TO_BEGIN,
+            ONGOING,
+            FINISHED
+         }
+         enum class Player {
+             WHITE,
+             BLACK,
+         }
+     }
 
     private object Sessions {
-        private var currentToken = Random.nextLong()
-        fun killAllSessions() {
-            currentToken = Random.nextLong()
+        private const val MAX_SESSIONS = 8
+        private const val EMPTY_SESSION = 0L
+        private val sessionBuffer = LongArray(MAX_SESSIONS) { EMPTY_SESSION }
+
+        fun registerNew(): Int {
+            var id = 0
+            while (id < MAX_SESSIONS) {
+                if (sessionBuffer[id] == EMPTY_SESSION) {
+                    sessionBuffer[id] = newToken()
+                    return id
+                }
+                id++
+            }
+            return INVALID_ID
         }
-        fun getCurrentToken(): Long {
-            return currentToken
+
+        fun vacate(id: Int) {
+            enforceInBounds(id)
+            sessionBuffer[id] = EMPTY_SESSION
         }
-        fun isExpired(token: Long): Boolean {
-            return token != currentToken
+
+        fun vacateAll() {
+            sessionBuffer.fill(EMPTY_SESSION)
+        }
+
+        fun isSessionValid(id: Int, token: Long): Boolean {
+            enforceInBounds(id)
+            return sessionBuffer[id] == token
+        }
+
+        fun isLegalID(id: Int): Boolean {
+            return id in 0.until(MAX_SESSIONS)
+        }
+
+        fun getToken(id: Int): Long {
+            enforceInBounds(id)
+            return sessionBuffer[id]
+        }
+
+        private fun newToken(): Long {
+            return Random.nextLong()
+        }
+
+        private fun enforceInBounds(id: Int) {
+            if (id >= MAX_SESSIONS) throw IllegalArgumentException("Invalid Session ID: $id. ID must be between 0 and ${MAX_SESSIONS - 1}")
         }
     }
-    private val player1: Player
-    private val player2: Player
+
+    private val player1: player.Player
+    private val player2: player.Player
     private var player1color = -1
     private var player2color = -1
-    private var token = Sessions.getCurrentToken()
 
-    var board = Board()
-    var generator = MoveGenerator(board)
+    private var board = Board()
+    private var generator = MoveGenerator(board)
 
-    var turn = 0 // 0 = White, 1 = Black
-    var isOngoing = false
-    val receiver = Holder<move>()
-    var legalMovesForTurn = emptyList<move>()
+    private var turn = 0 // 0 = White, 1 = Black
+    var status = Status.UNREADY
+    private val receiver = Holder<move>()
+    private var legalMovesForTurn = emptyList<move>()
+    // register a new game, otherwise starting is disallowed.
+    private val sessionID = Sessions.registerNew()
+    private val sessionToken = if (Sessions.isLegalID(sessionID)) Sessions.getToken(sessionID)
+    else throw IllegalStateException("Cannot create game session: session buffer is full.")
 
-    constructor(player1: Player? = null, player2: Player? = null) {
-        this.player1 = player1?: getRandomPlayer().constructors.first().call()
-        this.player2 = player2?: getRandomPlayer().constructors.first().call()
+
+    constructor(player1: player.Player? = null, player2: player.Player? = null) {
+        this.player1 = player1 ?: getRandomPlayer().constructors.first().call()
+        this.player2 = player2 ?: getRandomPlayer().constructors.first().call()
         randomizeColors()
     }
-    private fun getRandomPlayer(): KClass<out Player> {
+
+    private fun getRandomPlayer(): KClass<out player.Player> {
         return PLAYER_LIST[Random.nextInt(0, PLAYER_LIST.size)]
     }
 
     private fun randomizeColors() {
-        player1color = Random.nextInt(0,2)
+        player1color = Random.nextInt(0, 2)
         player2color = when (player1color) {
             0 -> 1
             1 -> 0
@@ -68,74 +118,74 @@ class Game {
         }
     }
 
-
-fun startNewGame(fen: String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
-    token = Sessions.getCurrentToken()
-    board.loadBoard(fen)
-            //repeat(1000) {board.moveGenerator.genAllLegalMoves(BLACK)}
-            //repeat(10) {board.moveGenerator.benchmarkMovegen()}
-// get the game ready to begin
-    if (player1 is Engine) player1.prepare(player1color, this)
-    if (player2 is Engine) player2.prepare(player2color, this)
-
-
-    println(board.getBoardString(player1color))
-    printBorder()
-    println("New Game Started.")
-    println("Turn: WHITE")
-
-            println(player1.getName() + " (" + colorsNames[player1color] + ") vs " +
-                    player2.getName() + " (" + (colorsNames[player2color] + ")"))
-    printBorder()
-
-            var clock = 0
+    private fun withValidity(id: Int, token: Long, action: () -> Unit) {
+        if (Sessions.isSessionValid(id, token)) {
+            action()
+        }
+    }
+    //repeat(1000) {board.moveGenerator.genAllLegalMoves(BLACK)}
+    //repeat(10) {board.moveGenerator.benchmarkMovegen()}
+    fun prepareToBegin(fen: String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
+        // get the game ready to begin
+        board.loadBoard(fen)
+        if (player1 is Engine) withValidity(sessionID, sessionToken) { player1.prepare(player1color, this) }
+        if (player2 is Engine) withValidity(sessionID, sessionToken) { player2.prepare(player2color, this) }
 
 
-    CoroutineScope(Dispatchers.Default).launch {
+
+        println(board.getBoardString(player1color))
+        printBorder()
+        println("New game started. ID: $sessionID")
+        println(
+            player1.getName() + " (" + colorsNames[player1color] + ") vs " +
+                    player2.getName() + " (" + colorsNames[player2color] + ")"
+        )
+        println("Turn: ${if (player1color == WHITE) player1.getName() else player2.getName() }")
+        printBorder()
+
+        var clock = 0
+        status = Status.READY_TO_BEGIN
+    }
+    fun start() {
+        if (status != Status.READY_TO_BEGIN) return
+        status = Status.ONGOING
+        CoroutineScope(Dispatchers.Default).launch {
             //legalMovesForTurn = generator.genAllLegalMoves(turn).filter { it != 0 }
-        isOngoing = true
-        while (isOngoing && !Sessions.isExpired(token)) {
+            while (status == Status.ONGOING && Sessions.isSessionValid(sessionID,sessionToken)) {
 
-                clock++
-
-                // handle the 3 settings: PVP, PVE, EVE
-                if (!isTwoUsersGame) {
-                    printBorder()
-                    if (turn == player2color) player2.makePlayy(receiver)
-                    if (!isUserGame) if (turn == player1color) player1.makePlayy(receiver)
-                    printBorder()
-                }
-                if (receiver.hasValueChanged()) {
-                    legalMovesForTurn = generator.genAllLegalMoves(turn).filter { it != 0 }
-                    tryMove()
+                if (turn == player2color && player2 is Engine) withValidity(sessionID, sessionToken) { player2.makePlayy(receiver) }
+                if (turn == player1color && player1 is Engine) withValidity(sessionID, sessionToken) { player1.makePlayy(receiver) }
+                printBorder()
+                withValidity(sessionID, sessionToken) {
+                    if (receiver.hasValueChanged()) {
+                        actOnBoard()
+                    }
                 }
 
-                //if (clock == 500) { println("ongoing..."); clock = 0}
                 delay(1400)
             }
 
-            if (isExpired(token)) {
-                println("session terminated")
+            if (!Sessions.isSessionValid(sessionID, sessionToken)) {
+                println("Session Terminated: $sessionID")
             }
         }
 
     }
-
-    fun tryMove() {
-        val move = receiver.drop()?: throw IllegalArgumentException("Move cannot be null.")
+    private fun actOnBoard() {
+        generateTurnMoves()
+        val move = receiver.drop() ?: throw IllegalArgumentException("Move cannot be null.")
         receiver.forget()
 
-        require (move in legalMovesForTurn) {"Impossible move: ${move.getString()}"}
-            board.makeMove(move)
-            changeTurn()
-            println(board.getBoardString(player1color))
+        require(move in legalMovesForTurn) { "Impossible move: ${move.getString()}" }
+        board.makeMove(move)
+        changeTurn()
+        println(board.getBoardString(player1color))
     }
 
-    fun runGame() {
-
+    private fun generateTurnMoves() {
+        legalMovesForTurn = generator.genAllLegalMoves(turn).filter { it != 0 }
     }
-
-    fun printBorder() {
+    private fun printBorder() {
         println("--------------------------------------------------------------------")
     }
 
@@ -145,21 +195,21 @@ fun startNewGame(fen: String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
         receiver.hold(move)
     }
 
-    fun receiveMove(origin: Int, endSquare: Int) {
-        val piece = board.fetchPiece(origin)
-        val pieceOnEnd = board.fetchPiece(endSquare)       // this handling is horrible but gets the job done for now
-        var flags = Move.encodeFlags(
-            pieceOnEnd.isOccupied(),
-            (piece.isKing() && abs(origin - endSquare) == CASTLE_MOVE_DISTANCE),
-            (piece.isPawn() && isOnBack(endSquare)),
-            (piece.isPawn() && pieceOnEnd.isEmpty() && isDiagonalMove(origin, endSquare))
-        )
-
-        receiveMove(Move.encode(origin, endSquare, flags))
+    private fun isOver(): Boolean {
+        return legalMovesForTurn.isEmpty() || isThreeRepetition() || fiftyMoveRule()
+    }
+    private fun isThreeRepetition(): Boolean {
+        return false            // need to implement
+    }
+    private fun fiftyMoveRule(): Boolean {
+        return false
     }
 
+
     private fun endgame(): Int {
-        isOngoing = false
+        if (isOver()) {
+            status = Status.FINISHED
+        }
         return 0
     }
     /*
@@ -178,7 +228,7 @@ fun startNewGame(fen: String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
                 else -> throw IllegalStateException("Turn cannot be: $turn")
             }
         } else {
-            turn == newTurn
+            turn = newTurn
             return true
         }
         return false

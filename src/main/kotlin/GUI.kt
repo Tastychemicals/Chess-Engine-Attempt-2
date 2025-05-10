@@ -15,11 +15,8 @@ import javafx.stage.Stage
 import BoardUtils.*
 import Base.Game
 import Base.Piece
-import UI.Parser
 import UI.VisualController
-import UI.Visualizer
 import javafx.animation.AnimationTimer
-import javafx.scene.input.KeyCode
 import javafx.scene.text.Font
 
 
@@ -81,7 +78,7 @@ class GUI : Application() {
     fun newGame() {
         val game = Game()
         vc.switchToGame(game)
-        game.startNewGame()
+        game.prepareToBegin()
         log.text = ""
     }
 
