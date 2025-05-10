@@ -8,26 +8,49 @@ class Board {
     private var whiteKingPostion: Int? = null
     private var blackKingPostion: Int? = null
 
-
-    public val moveGenerator = MoveGenerator(this)
-
     private var pieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
-    private var WhitePieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
-    private var BlackPieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
+    private var whitePieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
+    private var blackPieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
     private var whitePieceCount = 0;
     private var blackPieceCount = 0;
 
 
     var lastMove: Pair<Int,Int>? = null
-    private val rookDestinationHolder = Holder<Int>()
+    private var rookDestinationHolder = Holder<Int>()
 
+    constructor()
+    constructor (enpassantSquare: Int?,
+                 whiteKingPosition: Int?,
+                 blackKingPosition: Int?,
+                 pieces: Array<Piece>,
+                 lastMove: Pair<Int,Int>,
+                 rookDestination: Holder<Int>
+        ) {
+        this.enpassantSquare = enpassantSquare
+        this.whiteKingPostion = whiteKingPosition
+        this.blackKingPostion = blackKingPosition
+        copyPieces(pieces)
+        this.lastMove = lastMove
+        this.rookDestinationHolder = rookDestination.clone()
+    }
 
+    private fun copyPieces(pieces: Array<Piece>) {
+        for (i in 0.until (pieces.size)) {
+            this.pieces[i] = pieces[i]
+            if (pieces[i].isColor(WHITE))  {
+                whitePieceCount++
+                this.whitePieces[i] = pieces[i]
+            }
+            if (pieces[i].isColor(BLACK)) {
+                blackPieceCount++
+                this.blackPieces[i] = pieces[i]
+            }
+        }
+    }
 
     /**
      * Initializes this board's bit boards.
      */
-
-
     fun loadBoard(fenString: String) {
         val digestibleBoard = simplifyFenBoard(fenString)
         for (square in 0.until(BOARD_SIZE)) {
@@ -46,8 +69,8 @@ class Board {
      */
     fun clearBoard(): Boolean {
         pieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
-        WhitePieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
-        BlackPieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
+        whitePieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
+        blackPieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
 
        // piecePositions = pieces.withIndex().associate { (square, piece) -> (square to piece) }.toMutableMap()
         return true
@@ -74,14 +97,21 @@ class Board {
         return false
     }
 
+    fun addPiece(color: Int, type: Int, squarePosition: Int): Boolean {
+        if (isInBounds(squarePosition) && type != EMPTY) {
+            return addPiece(Piece(pieceCode(color, type)), squarePosition)
+        }
+        return false
+    }
+
     private fun addToColorArray(piece: Piece, position: Int) {
         if (piece.isColor(WHITE)) {
-            WhitePieces[position] = piece
+            whitePieces[position] = piece
             whitePieceCount++
         }
         else {
             if (piece.isColor(BLACK)){
-                BlackPieces[position] = piece
+                blackPieces[position] = piece
                 blackPieceCount++
             }
 
@@ -90,27 +120,22 @@ class Board {
     }
 
     private fun removeFromColorArrays(position: Int) {
-        if (WhitePieces[position].isOccupied()) {
-            WhitePieces[position] = EMPTY_SQUARE
+        if (whitePieces[position].isOccupied()) {
+            whitePieces[position] = EMPTY_SQUARE
             whitePieceCount--
         }
-        if (BlackPieces[position].isOccupied()) {
-            BlackPieces[position]   = EMPTY_SQUARE
+        if (blackPieces[position].isOccupied()) {
+            blackPieces[position]   = EMPTY_SQUARE
             blackPieceCount--
         }
     }
 
     private fun getColorArray(team: Int): Array<Piece> {
-        return  if (team == WHITE) WhitePieces else BlackPieces
+        return  if (team == WHITE) whitePieces else blackPieces
     }
 
 
-    fun addPiece(color: Int, type: Int, squarePosition: Int): Boolean {
-        if (isInBounds(squarePosition) && type != EMPTY) {
-            return addPiece(Piece(pieceCode(color, type)), squarePosition)
-        }
-        return false
-    }
+
     /**
      * Removes the piece on the specified square.
      *
@@ -228,20 +253,13 @@ class Board {
     }
     fun fetchPiece(squarePosition: Int, color: Int = NO_COLOR): Piece {
         if (isInBounds(squarePosition)) {
-            if (color == WHITE) return WhitePieces[squarePosition]
-            if (color == BLACK) return BlackPieces[squarePosition]
+            if (color == WHITE) return whitePieces[squarePosition]
+            if (color == BLACK) return blackPieces[squarePosition]
             return pieces[squarePosition]
         }
         return EMPTY_SQUARE
     }
 
-    fun getPieceColorFromSquare(square: Int): Int {
-        if (square in 0.until(BOARD_SIZE)){
-            return pieces[square].color
-        }
-
-        return -1
-    }
 
     fun getKingPosition(color: Int): Int? {
         return when (color) {
@@ -256,7 +274,11 @@ class Board {
         }
     }
 
-    fun isInBounds(square: Int): Boolean = square in 0.until(BOARD_SIZE)
+    private fun isInBounds(square: Int): Boolean = square in 0.until(BOARD_SIZE)
+
+    fun deepCopy() {
+
+    }
 
     fun getBoardString(orientation: Int = 0): String {
         val board = StringBuilder()

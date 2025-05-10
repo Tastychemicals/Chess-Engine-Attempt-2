@@ -78,7 +78,7 @@ class Visualizer {
     fun updateCustomMask(): Boolean {
         mask.clear()
         moveSquareMask.clear()
-        checkedKingMask = display.board.moveGenerator.getCheckedKing(display.turn)
+        checkedKingMask = display.board.moveGenerator.getCheckedKing()
         heatMask = display.board.moveGenerator.enemyAttackSquares
         val pieces = display.board.fetchPieces()
 

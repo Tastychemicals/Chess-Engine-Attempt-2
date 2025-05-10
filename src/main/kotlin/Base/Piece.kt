@@ -38,6 +38,16 @@ value class Piece(val bitCode: UInt = 0u) {
         }
         return (this.color != other.color)
     }
+    fun value(): Int {
+        return when (type) {
+            KNIGHT -> return 3
+            ROOK -> return 5
+            QUEEN -> return 9
+            BISHOP -> return 3
+            PAWN -> 1
+            else -> 0
+        }
+    }
 
     fun fetchColor(): Int {
         return if (isEmpty()) {

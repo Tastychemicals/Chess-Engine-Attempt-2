@@ -8,9 +8,10 @@ import BoardUtils.move
 import Base.Board
 import Base.Game
 import Base.MoveGenerator
+import BoardUtils.isCheck
 import kotlin.random.Random
 
-class Capturer : Engine() {
+class CapturerWithCheck : Engine() {
     val moveGenerator = MoveGenerator(Board())
     var team = -1
     var board = Board()
@@ -30,15 +31,15 @@ class Capturer : Engine() {
     }
 
     override fun getName(): String {
-        return "Capturer"
+        return "CapturerWithCheck"
     }
 
     override fun makePlayy(receiver: Holder<move>) {
         val moves = moveGenerator.genAllLegalMoves(team).filter { it != 0 }
         println("looking for captures...")
-        val captures = moves.filter { it.isCapture() || it.isPromotion() }
+        val captures = moves.filter { it.isCheck() || it.isCapture() }
         val move = if (captures.isEmpty()) {
-            println("No captures or promotions found.")
+            println("No captures, promotions, or checks found.")
             println("Playing random move.")
             getRandom(moves)
         } else {

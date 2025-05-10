@@ -42,22 +42,39 @@ val typeNames = arrayOf(
     "QUEEN",
     "KING",
 )
+val colorsNames = arrayOf(
+    "WHITE",
+    "BLACK"
+)
 
-fun pieceCode(color: Int, type: Int): UInt {
-    val bitCode = 0u shl 1 or                   // hasMoved : 4 bits deep
+fun pieceCode(color: Int, type: Int, hasMoved: Boolean = false): UInt {
+    val bitCode = (if (hasMoved) 1u else 0u) shl 1 or     // hasMoved : 4 bits deep
             convertToBinary(color) shl 3 or     // color    : 3 bits deep
             convertToBinary(type)               // type     : 1 bit deep
     return bitCode
 }
+
+fun getRandomPiece(): Piece {
+    return Piece(
+        pieceCode(
+            Random.nextInt(pieceColors.size),
+            Random.nextInt(1, pieceTypes.size)
+        ) // for excluding empty squares)
+    )
+}
+
+fun makePiece(color: Int, type: Int, hasMoved: Boolean = false): Piece {
+    return Piece(pieceCode(color, type, hasMoved))
+}
+
+fun getPieceName(color: Int, type: Int): String {
+    return if (type == EMPTY) ". " else
+        "${colorsNames[color]} ${typeNames[type]}"
+}
+
 // -----------------------------
 
-// ---------- Moves ----------
-
-
-
-
-
-
+// ---------- Board ----------
 
 fun convertPairToIntSquare(square: Pair<Int,Int>): Int {
     val x = square.first
@@ -65,11 +82,38 @@ fun convertPairToIntSquare(square: Pair<Int,Int>): Int {
     if (x == 0 && y == 0) return 0
     return if (x in 0..8 && y in 0..8) (y * 8 + x) else -1
 }
-
-fun convertIntToPairSquare(squareNumber: Int): Pair<Int, Int> {
+fun convertIntToPairSquare(squareNumber: Int): Pair<Int, Int> {         // might be deprecated, potentially use getRow() or getCol()
     val x = 7 - (squareNumber % 8)
     val y = squareNumber / 8
     return  Pair(x, y)
+}
+
+fun getRow(square: Int): Int {
+    return square / 8
+}
+
+fun getCol(square: Int): Int {
+    return 7 - (square % 8)
+}
+
+fun rowIs(square: Int, row: Int): Boolean {
+    return getRow(square) == row
+}
+
+fun colIs(square: Int, col: Int): Boolean {
+    return getCol(square) == col
+}
+
+fun getPromotionRank(color: Int): Int {
+    return when (color) {
+        WHITE -> 7
+        BLACK -> 0
+        else -> -1
+    }
+}
+
+fun isBeforePromotionRank(square: Int, color: Int): Boolean {
+    return rowIs(square, getPromotionRank(color) - getPawnDirection(color))
 }
 
 fun colDistance(origin: Int, endSquare: Int): Int =
@@ -82,6 +126,13 @@ fun isOnDiffRow(origin: Int, endSquare: Int): Boolean {
 }
 fun isOnDiffCol(origin: Int, endSquare: Int): Boolean {
     return colDistance(origin, endSquare) != 0
+}
+
+fun isOnSameRow(origin: Int, endSquare: Int): Boolean {
+    return rowDistance(origin, endSquare) == 0
+}
+fun isOnSameCol(origin: Int, endSquare: Int): Boolean {
+    return colDistance(origin, endSquare) == 0
 }
 fun isDiagonalMove(origin: Int, endSquare: Int): Boolean {
     return rowDistance(origin, endSquare) == colDistance(origin, endSquare)
@@ -99,15 +150,14 @@ fun doesNotWrap(origin: Int, endSquare: Int): Boolean = (colDistance(origin, end
 fun getSquareBehind(squarePosition: Int, color: Int): Int {
     return squarePosition + (8 * getPawnDirection(getOppositeColor(color)))
 }
-
+// ---------------------------
 
 fun getOppositeColor(color: Int): Int {
    return when (color) {
-        0 -> 1
-        else -> 0
+        WHITE -> BLACK
+        else -> WHITE
     }
 }
-
 fun getPawnDirection(color: Int): Int = when (color) {
      BLACK -> -1
      WHITE -> 1
@@ -160,24 +210,37 @@ fun getPieceFromFen(letter: Char): Piece {
     }
 }
 
-fun getRandomPiece(): Piece {
-    return Piece(
-        pieceCode(
-            Random.nextInt(pieceColors.size),
-            Random.nextInt(1, pieceTypes.size)
-        ) // for excluding empty squares)
-    )
+fun getSquareName(square: Int): String {
+    val coords = convertIntToPairSquare(square)
+    return fileNames[coords.first] + rankNames[coords.second]
 }
 
 
-
-val colorsNames = arrayOf(
-    "WHITE",
-    "BLACK"
+val fileNames = mapOf(
+    0 to "h",
+    1 to "g",
+    2 to "f",
+    3 to "e",
+    4 to "d",
+    5 to "c",
+    6 to "b",
+    7 to "a"
 )
 
+val rankNames = mapOf(
+    0 to "1",
+    1 to "2",
+    2 to "3",
+    3 to "4",
+    4 to "5",
+    5 to "6",
+    6 to "7",
+    7 to "8"
+)
+
+
 fun simplifyFenBoard(fenString: String): String {
-    var fenRebuilder = StringBuilder()
+    val fenRebuilder = StringBuilder()
     val fenBoard = fenString.split(" ")[0].split("/").reversed()
     for (rank in 0..7) {
         val fenRank = fenBoard[rank]
@@ -193,85 +256,4 @@ fun simplifyFenBoard(fenString: String): String {
     // println(fenRebuilder)
     return fenRebuilder.toString()
 
-}
-
-
-fun getPieceName(color: Int, type: Int): String {
-    return if (type == EMPTY) ". " else
-     "${colorsNames[color]} ${typeNames[type]}"
-}
-
-
-fun countSquares(b: Long): Int {
-
-    var c = b
-    c = c - ((c shr 1) and magicHex[0])
-    c = (c and magicHex[1]) + ((c shr 2) and magicHex[1])
-    c = (c + (c shr 4)) and magicHex[2]
-    c *= magicHex[3]
-
-    return (c shr 56).toInt()
-}
-
-private val magicHex = arrayOf(
-    0x5555555555555555L, 0x3333333333333333L, 0x0F0F0F0F0F0F0F0FL, 0x0101010101010101L
-)
-
-class BoardHelper {
-
-
-    companion object {
-
-
-
-
-
-        // 0 000 000000  -> color bit, type bits, position bits
-
-       // const val POSITION_SELECTOR: UInt = 0b0000111111u
-
-
-        val colors = arrayOf(
-            WHITE,
-            BLACK
-        )
-        val pieces = arrayOf(
-            EMPTY,
-            PAWN,
-            KNIGHT,
-            BISHOP,
-            ROOK,
-            QUEEN,
-            KING,
-
-            )
-
-
-
-
-        fun countPieces(p: Long): Int {
-
-            var c = p
-            c = c - ((c shr 1) and magicHex[0])
-            c = (c and magicHex[1]) + ((c shr 2) and magicHex[1])
-            c = (c + (c shr 4)) and magicHex[2]
-            c *= magicHex[3]
-
-            return (c shr 56).toInt()
-        }
-
-
-        /**
-         * @return the [squarePosition] as a Bit Game.Board.
-         */
-        fun convertIntSquareToBit(squarePosition: Int): ULong {
-            return if (squarePosition != -1){
-                1uL shl squarePosition
-            } else 0uL
-        }
-
-
-
-
-    }
 }

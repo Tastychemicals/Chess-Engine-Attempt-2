@@ -48,6 +48,7 @@ private const val PROMOTION_TYPE_FLAG = 0b111 shl PROMOTION_TYPE_BIT// 0b1110000
 
         fun addFlags(move: move, flags: Int = 0): move = (move) or  (flags shl FLAGS_BIT)
         fun addPromotionType(flags: Int, type: Int): Int = flags or (type shl PROMOTION_TYPE_BIT)
+        fun addIfCheck(flags: Int, isCheck: Boolean): Int = flags or ( (if (isCheck) 1 else 0) shl CHECK_BIT)
         fun getPromotionType(flags: Int): Int = (flags and START_SQUARE_SELECTOR) shr START_SQUARE_BIT
     }
 
@@ -59,7 +60,7 @@ private const val PROMOTION_TYPE_FLAG = 0b111 shl PROMOTION_TYPE_BIT// 0b1110000
     fun move.flags(): Int = (this and FLAGS_SELECTOR) shr FLAGS_BIT
 
     fun move.getPromotion(): Int = (this.flags() and PROMOTION_TYPE_FLAG) shr PROMOTION_TYPE_BIT
-    fun move.getString(): String = getFlagNames().joinToString() + " From ${this.start()} to ${this.end()}"
+    fun move.getString(): String = getFlagNames().joinToString() + " From ${getSquareName(this.start())} to ${ getSquareName(this.end())}"
 
     fun move.isCapture (): Boolean = this.flags() and CAPTURE_FLAG != 0
     fun move.isCastle (): Boolean = this.flags() and CASTLE_FLAG != 0
@@ -74,9 +75,9 @@ private const val PROMOTION_TYPE_FLAG = 0b111 shl PROMOTION_TYPE_BIT// 0b1110000
         val names = mutableListOf<String>()
         if (isCapture()) names.add("Capture")
         if (isEnPassant()) names.add("En Passant")
-        if (isPromotion()) names.add("Promotion to ${typeNames[getPromotion()]}")
         if (isCastle()) names.add("Castle")
         if (isCheck()) names.add("Check")
+        if (isPromotion()) names.add("Promotion to ${typeNames[getPromotion()]}")
         if (names.isEmpty()) names.add("Quiet Move")
 
         return names
