@@ -376,8 +376,10 @@ class MoveGenerator(board: Board) {
         println("NPS: ${"%.2f".format(nps)} nodes/sec")
     }
 
- 
-    fun genLegalPieceMoves(square: Int, piece: Piece): Long {
+    fun genLegalPieceMoves(square: Int): Long {
+        return genLegalPieceMoves(square, getPiece(square))
+    }
+    private fun genLegalPieceMoves(square: Int, piece: Piece): Long {
         val disjointMoves = genPseudoPieceMoves(square, piece)
         var moves = 0L
         for (move in disjointMoves) {
@@ -394,6 +396,7 @@ class MoveGenerator(board: Board) {
 
         return moves
     }
+
     fun printBitboard(bitboard: Long) {
         for (rank in 7 downTo 0) {
             for (file in 0..7) {

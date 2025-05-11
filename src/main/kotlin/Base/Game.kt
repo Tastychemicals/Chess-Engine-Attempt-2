@@ -6,7 +6,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import player.Player
 import kotlin.random.Random
 import kotlin.reflect.KClass
 
@@ -20,6 +19,12 @@ class Game {
             MasterOfZeroDepth::class,
             RandomMover::class
         )
+        fun getRandomPlayer(): KClass<out player.Player> {
+            return PLAYER_LIST[Random.nextInt(0, PLAYER_LIST.size)]
+        }
+        fun getRandomPlayerInstance(): player.Player {
+            return getRandomPlayer().constructors.first().call()
+        }
          enum class Status {
             UNREADY,
             READY_TO_BEGIN,
@@ -30,9 +35,9 @@ class Game {
              WHITE,
              BLACK,
          }
-     }
+    }
 
-    private object Sessions {
+    object Sessions {
         private const val MAX_SESSIONS = 8
         private const val EMPTY_SESSION = 0L
         private val sessionBuffer = LongArray(MAX_SESSIONS) { EMPTY_SESSION }
@@ -86,7 +91,7 @@ class Game {
     private var player1color = -1
     private var player2color = -1
 
-    private var board = Board()
+    var board = Board()
     private var generator = MoveGenerator(board)
 
     private var turn = 0 // 0 = White, 1 = Black
@@ -98,31 +103,12 @@ class Game {
     private val sessionToken = if (Sessions.isLegalID(sessionID)) Sessions.getToken(sessionID)
     else throw IllegalStateException("Cannot create game session: session buffer is full.")
 
-
     constructor(player1: player.Player? = null, player2: player.Player? = null) {
-        this.player1 = player1 ?: getRandomPlayer().constructors.first().call()
-        this.player2 = player2 ?: getRandomPlayer().constructors.first().call()
+        this.player1 = player1 ?: getRandomPlayerInstance()
+        this.player2 = player2 ?: getRandomPlayerInstance()
         randomizeColors()
     }
 
-    private fun getRandomPlayer(): KClass<out player.Player> {
-        return PLAYER_LIST[Random.nextInt(0, PLAYER_LIST.size)]
-    }
-
-    private fun randomizeColors() {
-        player1color = Random.nextInt(0, 2)
-        player2color = when (player1color) {
-            0 -> 1
-            1 -> 0
-            else -> throw IllegalStateException("Player 1 cannot be $player1color") // this should never happen
-        }
-    }
-
-    private fun withValidity(id: Int, token: Long, action: () -> Unit) {
-        if (Sessions.isSessionValid(id, token)) {
-            action()
-        }
-    }
     //repeat(1000) {board.moveGenerator.genAllLegalMoves(BLACK)}
     //repeat(10) {board.moveGenerator.benchmarkMovegen()}
     fun prepareToBegin(fen: String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
@@ -131,22 +117,18 @@ class Game {
         if (player1 is Engine) withValidity(sessionID, sessionToken) { player1.prepare(player1color, this) }
         if (player2 is Engine) withValidity(sessionID, sessionToken) { player2.prepare(player2color, this) }
 
-
-
         println(board.getBoardString(player1color))
         printBorder()
         println("New game started. ID: $sessionID")
         println(
             player1.getName() + " (" + colorsNames[player1color] + ") vs " +
-                    player2.getName() + " (" + colorsNames[player2color] + ")"
+            player2.getName() + " (" + colorsNames[player2color] + ")"
         )
         println("Turn: ${if (player1color == WHITE) player1.getName() else player2.getName() }")
         printBorder()
-
-        var clock = 0
         status = Status.READY_TO_BEGIN
     }
-    fun start() {
+    fun begin() {
         if (status != Status.READY_TO_BEGIN) return
         status = Status.ONGOING
         CoroutineScope(Dispatchers.Default).launch {
@@ -189,6 +171,20 @@ class Game {
         println("--------------------------------------------------------------------")
     }
 
+    private fun randomizeColors() {
+        player1color = Random.nextInt(0, 2)
+        player2color = when (player1color) {
+            0 -> 1
+            1 -> 0
+            else -> throw IllegalStateException("Player 1 cannot be $player1color") // this should never happen
+        }
+    }
+
+    private fun withValidity(id: Int, token: Long, action: () -> Unit) {
+        if (Sessions.isSessionValid(id, token)) {
+            action()
+        }
+    }
 
     fun receiveMove(move: move) {
         board.tryMove(move.start(), move.end())
@@ -202,9 +198,8 @@ class Game {
         return false            // need to implement
     }
     private fun fiftyMoveRule(): Boolean {
-        return false
+        return false            // need to implement
     }
-
 
     private fun endgame(): Int {
         if (isOver()) {
@@ -217,8 +212,6 @@ class Game {
      w - turn to move
      0 1 - half move clock (adds to 100ply)
      */
-
-
     fun changeTurn(newTurn: Int = -1): Boolean {
         if (newTurn !in -1..1) throw IllegalStateException("Turn cannot be: $turn")
         if (newTurn == -1) {

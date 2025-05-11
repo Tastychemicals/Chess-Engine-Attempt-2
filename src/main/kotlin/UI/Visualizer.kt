@@ -1,117 +1,101 @@
 package UI
 
+import Base.Board
+import Base.MoveGenerator
 import BoardUtils.BOARD_SIZE
-import BoardUtils.end
-import BoardUtils.start
-import Base.Game
 import Base.Piece
 
 class Visualizer {
     /**
      * ------- Class used explicitly by the GUI --------
      */
-    var lastMoveMask: Pair<Int,Int>
+    enum class Operation {
+        CLEAR_ALL,
+        ADD_PIECE_MASK,
 
-    var typeFilter: MutableSet<Int>
-    var colorFilter: MutableSet<Int>
-    var positionFilter: MutableSet<Int>
-    var Filters = mutableSetOf< (Piece) -> Boolean >()
-
-    var mask = mutableListOf<Int>()
-    var moveSquareMask = mutableSetOf<Int>()
-    var checkedKingMask: Int = -1
-    var heatMask = IntArray(64)
-
-    var showAllSquares: Boolean
-
-    var orientation = 0 // 0 = White POV, 1 = Black POV
-    val display: Game
-
-    constructor(display: Game) {
-        this.display = display
-
-
-        this.typeFilter = mutableSetOf<Int>()
-        this.colorFilter = mutableSetOf<Int>()
-        this.positionFilter = mutableSetOf<Int>()
-
-        this.showAllSquares = true
-        this.orientation = 0
-        this.lastMoveMask = display.board.lastMove?: Pair(-1,-1)
 
     }
+
+    private var lastMoveMask = Pair(-1,-1)
+
+    private val typeFilter = mutableSetOf<Int>()
+    private val colorFilter = mutableSetOf<Int>()
+    private val positionFilter = mutableSetOf<Int>()
+    private val pieceFilters = mutableSetOf< (Piece) -> Boolean >()
+
+    private var pieceMask = mutableListOf<Int>()
+    private var validMovesMask = 0L
+    private var checkedKingMask: Int = -1
+    private var attackSquareMask = IntArray(64)
+
+    private var showSquareStrings = true
+
+    private var orientation = 0 // 0 = White POV, 1 = Black POV
+    private var display = Board()
+    private val mg = MoveGenerator(Board())
+
+    fun setBoard(board: Board) {
+        display = board
+        mg.setReferenceBoard(board)
+    }
+
 
     fun clearAllMasks(): Boolean {
         typeFilter.clear()
         colorFilter.clear()
         positionFilter.clear()
-        Filters.clear()
+        pieceFilters.clear()
         lastMoveMask = Pair(-1,-1)
-        moveSquareMask.clear()
-        heatMask = IntArray(64)
-        mask.clear()
+        validMovesMask = 0L
+        attackSquareMask = IntArray(64)
+        pieceMask.clear()
         checkedKingMask = -1
-
-
         return true
     }
 
-//todo: last move highlight mask
-    fun addNewTypeMask(type: Int) {
-        Filters.add {  it.type == type }
-    }
+    //todo: last move highlight mask
 
-    fun addNewPieceMask(type: Int, color: Int): Boolean {
-        Filters.add { !it.isEmpty() && it.type == type && it.color == color }
-        updateCustomMask()
+    fun addPieceMask(type: Int? = null, color: Int? = null): Boolean {
+        if (type == null && color == null) return false
+        if (type == null && color != null)  {
+            pieceFilters.add { it.isColor(color); }
+        }
+        if (type != null && color == null) {
+            pieceFilters.add { it.type == type }
+        }
+        if (type != null && color != null) {
+            pieceFilters.add { it.type == type && it.isColor(color) }
+        }
         return true
     }
 
-    fun addNewColorMask(pieceColor: Int): Boolean {
-         if (pieceColor != -1) {
-            Filters.add { !it.isEmpty() && it.color == pieceColor }
-            return true
-         }
-        return false
+    fun addMoveSquareMasks(square: Int): Boolean {
+        validMovesMask =  mg.genLegalPieceMoves(square)
+        return true
     }
 
-    fun updateCustomMask(): Boolean {
-        mask.clear()
-        moveSquareMask.clear()
-        checkedKingMask = display.board.moveGenerator.getCheckedKing()
-        heatMask = display.board.moveGenerator.enemyAttackSquares
-        val pieces = display.board.fetchPieces()
+    fun update(): Boolean {
+        pieceMask.clear()
+        validMovesMask = 0L
+        checkedKingMask = mg.getCheckedKing()
+        attackSquareMask = mg.enemyAttackSquares
+        val pieces = display.fetchPieces()
 
         for (square in 0.until(BOARD_SIZE)) {
-            for (filter in Filters) {
+            for (filter in pieceFilters) {
                 if ( filter(pieces[square]) ) {
-                    mask.add(square)
+                    pieceMask.add(square)
                      break // they meet at least 1 requirement
                 }
             }
         }
-        lastMoveMask = display.board.lastMove?: Pair(-1,-1)
+        lastMoveMask = display.lastMove?: Pair(-1,-1)
 
         return true
-        println("mask squares:" + mask)
+        // println("mask squares: $pieceMask")
     }
 
-    fun addMoveSquareMask(square: Int): Boolean {
-        val moves = display.board.moveGenerator.genAllLegalMoves(display.board.fetchPiece(square).color).filter {  it.start() == square }.map { it -> it.end()}.toMutableSet()
-
-        moveSquareMask = moves
-
-
-        return true
-    }
-
-    fun clearCustomMask() {
-
-        updateCustomMask()
-    }
-
-
-        //todo: need to add better command parsing to allow manipulation of moveMasks and lastMove masks
+    //todo: need to add better command parsing to allow manipulation of moveMasks and lastMove masks
     fun setNewOrientation(orientation: Int): Boolean {
        if (orientation != -1) {
          //  println("old: " + "$orientation" + " (inside visualizer setNewOrientation)")
@@ -123,8 +107,8 @@ class Visualizer {
     }
 
     fun setShowingSquares(): Boolean {
-        showAllSquares = showAllSquares != true
-        return showAllSquares
+        showSquareStrings = showSquareStrings != true
+        return showSquareStrings
     }
     fun setShowMaskSquares() {
 

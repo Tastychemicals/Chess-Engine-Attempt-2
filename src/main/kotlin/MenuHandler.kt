@@ -1,4 +1,5 @@
 import Base.Game
+import UI.Config
 import javafx.event.ActionEvent
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
@@ -6,6 +7,7 @@ import javafx.scene.Node
 import javafx.scene.Parent
 import javafx.scene.Scene
 import javafx.stage.Stage
+import player.HumanPlayers.VisualPlayer
 
 class MenuHandler {
 
@@ -17,23 +19,22 @@ class MenuHandler {
 
     @FXML
     fun startVsAI(e: ActionEvent) {
-        Game.players.isUserGame = true
-        Game.players.isTwoUsersGame = false
+        Config.player1 = VisualPlayer()
+        Config.player2 = Game.getRandomPlayerInstance()
         load(e)
-
     }
 
     @FXML
     fun aIVsAI(e: ActionEvent) {
-        Game.players.isUserGame = false
-        Game.players.isTwoUsersGame = false
+        Config.player1 = Game.getRandomPlayerInstance()
+        Config.player2 = Game.getRandomPlayerInstance()
         load(e)
     }
 
     @FXML
     fun playerVsPlayer(e: ActionEvent) {
-        Game.players.isUserGame = false
-        Game.players.isTwoUsersGame = true
+        Config.player1 = VisualPlayer()
+        Config.player2 = VisualPlayer()
         load(e)
     }
 

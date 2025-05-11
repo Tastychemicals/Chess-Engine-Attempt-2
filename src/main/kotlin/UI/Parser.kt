@@ -208,10 +208,10 @@ class Parser {
             // NOTE:
 
             when (text[0]) {
-                "p" -> pieceMaskAdded = visualizer.addNewPieceMask(pieceParam, color2Param)
+                "p" -> pieceMaskAdded = visualizer.addPieceMask(pieceParam, color2Param)
                 "c" -> allMaskCleared = visualizer.clearAllMasks()
-                "w" -> colorMaskAdded = visualizer.addNewColorMask(colorParam)
-                "b" -> colorMaskAdded = visualizer.addNewColorMask(colorParam)
+                "w" -> colorMaskAdded = visualizer.addPieceMask(color = colorParam)
+                "b" -> colorMaskAdded = visualizer.addPieceMask(color = colorParam)
                 else -> commandNotFound = true
             }
             log(

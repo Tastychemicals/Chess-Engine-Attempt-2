@@ -15,9 +15,11 @@ import javafx.stage.Stage
 import BoardUtils.*
 import Base.Game
 import Base.Piece
+import UI.Config
 import UI.VisualController
 import javafx.animation.AnimationTimer
 import javafx.scene.text.Font
+import player.Player
 
 
 class GUI : Application() {
@@ -66,7 +68,7 @@ class GUI : Application() {
 
     @FXML
     fun openMenu(e: ActionEvent) {
-        Game.Sessions.killAllSessions()
+        Game.Sessions.vacateAll()
         root = FXMLLoader.load(javaClass.getResource("Menu2.fxml"))
         stage = ((e.source as Node).scene.window) as Stage
         scene = Scene(root)
@@ -76,9 +78,10 @@ class GUI : Application() {
 
     @FXML
     fun newGame() {
-        val game = Game()
+        val game = Game(Config.player1, Config.player2)
         vc.switchToGame(game)
         game.prepareToBegin()
+        game.begin()
         log.text = ""
     }
 
@@ -97,7 +100,6 @@ class GUI : Application() {
     fun initialize() {
         paintBrush = canvas.graphicsContext2D
         setSquarePositions()
-        //log.requestFocus()
 
         val refreshRate = object : AnimationTimer() {
             private var lastUpdate = 0L
@@ -125,10 +127,6 @@ class GUI : Application() {
 
         canvas.setOnMouseReleased { e ->
             val endSquare = convertPairToIntSquare(adjustForOrientation(getSquareFromPixels(e.x,e.y)))
-            val moves = game.generator.genAllLegalMoves(game.turn).filter {it != 0 && ( it.isCheck())}
-            for (move in moves) {
-                println(move.getString())
-            }
             if (endSquare != -1 && endSquare != clickedSquare) {
 
                // game.receiveMove(Move.encode(clickedSquare, endSquare))

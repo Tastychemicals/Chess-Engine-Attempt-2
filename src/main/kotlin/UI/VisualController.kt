@@ -4,15 +4,18 @@ import Base.Game
 
 class VisualController {
     var game = Game()
-    var visualizer = Visualizer(game)
+    var visualizer = Visualizer()
     var parser = Parser(game, visualizer)
     val parserLog = mutableListOf<String>()
-
+    // ------ Game ------
     fun switchToGame(game: Game) {
         this.game = game
-        this.visualizer = Visualizer(this.game)
+        this.visualizer = Visualizer()
         this.parser = Parser(this.game, visualizer)
+        this.visualizer.setBoard(game.board)
     }
+    // ----------------
+    // ---- Parser ----
 
     fun parseText(string: String) {
         parserLog.add(parser.parseCommand(string))
@@ -21,9 +24,9 @@ class VisualController {
     fun getParserOutput(): List<String> {
         return parserLog.toList()
     }
+    // ----------------
+    // ---- Visualizer ----
     fun updateVisuals() {
-        visualizer.updateCustomMask()
+        visualizer.update()
     }
-
-
 }
