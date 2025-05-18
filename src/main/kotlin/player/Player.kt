@@ -1,8 +1,11 @@
 package player
 
 import Base.MoveGenerator
+import BoardUtils.Holder
+import BoardUtils.move
 
 interface Player {
     fun getName(): String
-    fun playMove()
+    fun getColor(): Int
+    //fun playMove(receiver: Holder<move>)
 }

@@ -9,32 +9,30 @@ import Base.Board
 import Base.Game
 import Base.MoveGenerator
 import BoardUtils.isCheck
+import BoardUtils.printBorder
 import kotlin.random.Random
 
 class CapturerWithCheck : Engine() {
     val moveGenerator = MoveGenerator(Board())
     var team = -1
     var board = Board()
-    var game = Game()
+    var game = Game(placeHolder =  true)
     override fun prepare(team: Int, game: Game) {
         this.team = team
         this.game = game
         moveGenerator.setReferenceBoard(game.board)
     }
 
-    override fun start() {
-        TODO("Not yet implemented")
-    }
-
-    override fun makePlay(timeLimit: Long, board: Board, receiver: Holder<Int>) {
-        TODO("Not yet implemented")
+    override fun getColor(): Int {
+        return this.team
     }
 
     override fun getName(): String {
         return "CapturerWithCheck"
     }
 
-    override fun makePlayy(receiver: Holder<move>) {
+    override fun playMove(receiver: Holder<move>) {
+        printBorder()
         val moves = moveGenerator.genAllLegalMoves(team).filter { it != 0 }
         println("looking for captures...")
         val captures = moves.filter { it.isCheck() || it.isCapture() }
@@ -47,6 +45,7 @@ class CapturerWithCheck : Engine() {
             getRandom(captures)
         }
         println("Trying: " + move.getString() )
+        printBorder()
         receiver.hold(move)
     }
 

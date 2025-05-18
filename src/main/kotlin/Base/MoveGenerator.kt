@@ -282,16 +282,8 @@ class MoveGenerator(board: Board) {
 
             for (endSquare in 0.until(BOARD_SIZE)) {
                 if (moves and (1L shl endSquare) != 0L) {
-                    val pieceOnEnd = getPiece(endSquare)
-                    val moveIsCheck = isMoveCheck(square, endSquare)
-                    val flags = Move.encodeFlags(
-                        pieceOnEnd.isOccupied(),
-                        (piece.isKing() && abs(square - endSquare) == CASTLE_MOVE_DISTANCE),
-                        (piece.isPawn() && isOnBack(endSquare)),
-                        (piece.isPawn() && pieceOnEnd.isEmpty() && isDiagonalMove(square, endSquare)),
-                        moveIsCheck
-                    )
 
+                    val flags = getMoveFlags(square, endSquare)
                     val move: move = Move.encode(square, endSquare, flags)
                     if (move.isPromotion()) {
                         val fromPromotion = true
@@ -320,8 +312,20 @@ class MoveGenerator(board: Board) {
         return moveBuffer
     }
 
+    fun getMoveFlags(origin: Int, endSquare: Int): Int {
 
-
+        val piece = getPiece(origin)
+        val pieceOnEnd = getPiece(endSquare)
+        val moveIsCheck = isMoveCheck(origin, endSquare)
+        val flags = Move.encodeFlags(
+            pieceOnEnd.isOccupied(),
+            (piece.isKing() && abs(origin - endSquare) == CASTLE_MOVE_DISTANCE),
+            (piece.isPawn() && isOnBack(endSquare)),
+            (piece.isPawn() && pieceOnEnd.isEmpty() && isDiagonalMove(origin, endSquare)),
+            moveIsCheck
+        )
+        return flags
+    }
     fun isMoveCheck(startSquare: Int, endSquare: Int): Boolean {
         val piece = getPiece(startSquare)
         return isMoveCheck(piece, endSquare)
@@ -329,13 +333,14 @@ class MoveGenerator(board: Board) {
 
     fun isMoveCheck(piece: Piece, endSquare: Int, fromPromotion: Boolean = false): Boolean {
         if (piece.isEmpty() || piece.isKing()) return false
+        if (enemyKingSquare == null) enemyKingSquare = referenceBoard.getKingPosition(piece.fetchColor())
         val vector = vectorBetween(endSquare, enemyKingSquare as Int)
-        val pawnDirection = getPawnDirection(piece.color)
+        val pawnDirection = getPawnDirection(piece.fetchColor())
         return when {
             piece.isSlider() -> {
                 if ((1L shl endSquare) and sliderCheckSquares != 0L && sliderMatchesVector(piece, vector)) {
-                    if (rowIs(endSquare, getPromotionRank(piece.color))) {
-                        (fromPromotion || !getPiece(endSquare - 8 * pawnDirection).isColor(piece.color))
+                    if (rowIs(endSquare, getPromotionRank(piece.fetchColor()))) {
+                        (fromPromotion || !getPiece(endSquare - 8 * pawnDirection).isColor(piece.fetchColor()))
                     } else true
                 } else false
             }
@@ -375,11 +380,15 @@ class MoveGenerator(board: Board) {
         println("Nodes: $nodes in ${"%.2f".format(actualDuration)} ms")
         println("NPS: ${"%.2f".format(nps)} nodes/sec")
     }
-
+    // you never want to call this if you want speed.
     fun genLegalPieceMoves(square: Int): Long {
-        return genLegalPieceMoves(square, getPiece(square))
+        val piece = getPiece(square)
+        enemyAttackSquares = getOpponentAttackSquares(piece.fetchColor())
+        return genLegalPieceMoves(square, piece)
     }
     private fun genLegalPieceMoves(square: Int, piece: Piece): Long {
+        if (kingSquare == null) kingSquare = getKingSquare(piece.color)
+
         val disjointMoves = genPseudoPieceMoves(square, piece)
         var moves = 0L
         for (move in disjointMoves) {

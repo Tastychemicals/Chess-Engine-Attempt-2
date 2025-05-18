@@ -244,7 +244,7 @@ class Parser {
                 "d" -> when (fen) {
                     else -> loadPawnsPosition2()
                 }
-                "kill" -> Game.Sessions.killAllSessions()
+                "kill" -> Game.Sessions.vacateAll()
                 else -> commandNotFound = true
             }
 
@@ -293,7 +293,7 @@ class Parser {
 
     fun loadPinsPosition1() {
         //visualizer.setNewOrientation()
-        visualizer.setNewOrientation(Game.players.player1color)
+        visualizer.setNewOrientation(reference.player1color)
         reference.prepareToBegin()
         reference.board.clearBoard()
         reference.board.addPiece(BLACK, KING, 49)
@@ -309,7 +309,7 @@ class Parser {
     }
     fun loadPawnsPosition2() {
         //visualizer.setNewOrientation()
-        visualizer.setNewOrientation(Game.players.player1color)
+        visualizer.setNewOrientation(reference.player1color)
         reference.prepareToBegin()
         Thread.sleep(400)
         reference.board.clearBoard()

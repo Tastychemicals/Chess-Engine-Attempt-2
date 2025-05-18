@@ -1,5 +1,7 @@
 import Base.Game
 import UI.Config
+import engines.CapturerWithCheck
+import engines.MasterOfZeroDepth
 import javafx.event.ActionEvent
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
@@ -20,14 +22,14 @@ class MenuHandler {
     @FXML
     fun startVsAI(e: ActionEvent) {
         Config.player1 = VisualPlayer()
-        Config.player2 = Game.getRandomPlayerInstance()
+        Config.player2 = null       // null means random engine
         load(e)
     }
 
     @FXML
     fun aIVsAI(e: ActionEvent) {
-        Config.player1 = Game.getRandomPlayerInstance()
-        Config.player2 = Game.getRandomPlayerInstance()
+        Config.player1 = MasterOfZeroDepth()
+        Config.player2 = MasterOfZeroDepth()
         load(e)
     }
 

@@ -16,21 +16,16 @@ class Visualizer {
 
     }
 
-    private var lastMoveMask = Pair(-1,-1)
+    var lastMoveMask = Pair(-1,-1)
 
-    private val typeFilter = mutableSetOf<Int>()
-    private val colorFilter = mutableSetOf<Int>()
-    private val positionFilter = mutableSetOf<Int>()
     private val pieceFilters = mutableSetOf< (Piece) -> Boolean >()
+    var pieceMask = mutableListOf<Int>()
+    var validMovesMask = 0L
+    var checkedKingMask: Int = -1
+    var attackSquareMask = IntArray(64)
+    var showSquareStrings = true
 
-    private var pieceMask = mutableListOf<Int>()
-    private var validMovesMask = 0L
-    private var checkedKingMask: Int = -1
-    private var attackSquareMask = IntArray(64)
-
-    private var showSquareStrings = true
-
-    private var orientation = 0 // 0 = White POV, 1 = Black POV
+    var orientation = 0 // 0 = White POV, 1 = Black POV
     private var display = Board()
     private val mg = MoveGenerator(Board())
 
@@ -41,9 +36,6 @@ class Visualizer {
 
 
     fun clearAllMasks(): Boolean {
-        typeFilter.clear()
-        colorFilter.clear()
-        positionFilter.clear()
         pieceFilters.clear()
         lastMoveMask = Pair(-1,-1)
         validMovesMask = 0L
@@ -75,8 +67,6 @@ class Visualizer {
     }
 
     fun update(): Boolean {
-        pieceMask.clear()
-        validMovesMask = 0L
         checkedKingMask = mg.getCheckedKing()
         attackSquareMask = mg.enemyAttackSquares
         val pieces = display.fetchPieces()
@@ -98,9 +88,8 @@ class Visualizer {
     //todo: need to add better command parsing to allow manipulation of moveMasks and lastMove masks
     fun setNewOrientation(orientation: Int): Boolean {
        if (orientation != -1) {
-         //  println("old: " + "$orientation" + " (inside visualizer setNewOrientation)")
             this.orientation = orientation
-          // println("new: " + "$orientation" + " (inside visualizer setNewOrientation)")
+
             return true
        }
             return false

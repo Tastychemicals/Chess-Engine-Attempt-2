@@ -214,7 +214,9 @@ fun getSquareName(square: Int): String {
     val coords = convertIntToPairSquare(square)
     return fileNames[coords.first] + rankNames[coords.second]
 }
-
+fun printBorder() {
+    println("--------------------------------------------------------------------")
+}
 
 val fileNames = mapOf(
     0 to "h",
