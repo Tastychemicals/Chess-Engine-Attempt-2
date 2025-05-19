@@ -102,6 +102,7 @@ class Game {
 
     var turn = 0 // 0 = White, 1 = Black
     var status = Status.UNREADY
+    var nodeCount = Counter()
     private val receiver = Holder<move>()
     private var legalMovesForTurn = emptyList<move>()
     // register a new game, otherwise starting is disallowed.
@@ -119,6 +120,35 @@ class Game {
         randomizeColors()
     }
 
+
+    fun perft(board: Board, color: Int, depth: Int, counter: Counter = nodeCount, ecounter: Counter = Counter()) {
+        if (depth == 0) {
+            // if (counter.get() == 8902) { println(board.getBoardString()) }
+            counter.inc()
+            return
+        }
+        generator.setReferenceBoard(board)
+        val moves = generator.genAllLegalMoves(color).filter{ it != 0 }.sortedBy { getSquareName(it.start()) }
+
+        var total = 0
+        for (move in moves) {
+            //var countAtThisDepth = counter
+            var countAtThisDepth =  if (depth == 4) Counter() else counter
+            var e = if (depth == 4) Counter() else ecounter
+            val nextBoard = board.deepCopy()
+            if (move.isCapture()) ecounter.inc()
+            nextBoard.makeMove(move)
+            perft(nextBoard, getOppositeColor(color), depth - 1, countAtThisDepth, e)
+            if (depth == 4 && (getSquareName(board.lastMove?.first ?: 0)) == "a2") {
+                println("${move.literal()}: $countAtThisDepth. Captures: $e")
+                total += e.get()
+            }
+
+        }
+        if (depth == 5) println(total)
+        //println("count at depth $depth: $counter")
+        //"Depth $depth: nodes from move branch
+    }
     //repeat(1000) {board.moveGenerator.genAllLegalMoves(BLACK)}
     //repeat(10) {board.moveGenerator.benchmarkMovegen()}
     fun prepareToBegin(fen: String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
@@ -145,9 +175,17 @@ class Game {
         status = Status.READY_TO_BEGIN
     }
     fun begin() {
+        //for (i in 1..6) {
+            nodeCount = Counter()
+            perft(board, WHITE, 5, nodeCount)
+            println("nodes found: $nodeCount")
+        //}
+
+        generator.setReferenceBoard(board)
         if (status != Status.READY_TO_BEGIN) return
         status = Status.ONGOING
         CoroutineScope(Dispatchers.Default).launch {
+            //generator.benchmarkMovegen(1000)
             //legalMovesForTurn = generator.genAllLegalMoves(turn).filter { it != 0 }
             while (status == Status.ONGOING && Sessions.isSessionValid(sessionID,sessionToken)) {
 
@@ -184,6 +222,7 @@ class Game {
     }
 
     private fun generateTurnMoves() {
+        generator.setReferenceBoard(board)
         legalMovesForTurn = generator.genAllLegalMoves(turn).filter { it != 0 }
     }
 

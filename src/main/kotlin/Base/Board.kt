@@ -2,59 +2,70 @@ package Base
 import BoardUtils.*
 
 class Board {
-    val EMPTY_SQUARE = Piece(pieceCode(0,0))
-
     private var enpassantSquare: Int? = null
-    private var whiteKingPostion: Int? = null
-    private var blackKingPostion: Int? = null
+    private var whiteKingPosition: Int? = null
+    private var blackKingPosition: Int? = null
 
     private var pieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
     private var whitePieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
     private var blackPieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
     private var whitePieceCount = 0;
     private var blackPieceCount = 0;
-
+    private companion object {
+        val EMPTY_SQUARE = Piece(pieceCode(0,0))
+        const val WHITE_KING_START_SQUARE = 4;
+        const val BLACK_KING_START_SQUARE = 60
+        const val WHITE_PAWN_START_RANK = 1
+        const val BLACK_PAWN_START_RANK = 6
+    }
 
     var lastMove: Pair<Int,Int>? = null
     private var rookDestinationHolder = Holder<Int>()
 
     constructor()
-    constructor (enpassantSquare: Int?,
+    private constructor (enpassantSquare: Int?,
                  whiteKingPosition: Int?,
                  blackKingPosition: Int?,
                  pieces: Array<Piece>,
-                 lastMove: Pair<Int,Int>,
+                 lastMove: Pair<Int,Int>?,
                  rookDestination: Holder<Int>
-        ) {
+    ) {
         this.enpassantSquare = enpassantSquare
-        this.whiteKingPostion = whiteKingPosition
-        this.blackKingPostion = blackKingPosition
+        this.whiteKingPosition = whiteKingPosition
+        this.blackKingPosition = blackKingPosition
         copyPieces(pieces)
-        this.lastMove = lastMove
+        this.lastMove = lastMove?.copy()
         this.rookDestinationHolder = rookDestination.clone()
     }
 
     private fun copyPieces(pieces: Array<Piece>) {
         for (i in 0.until (pieces.size)) {
-            this.pieces[i] = pieces[i]
-            if (pieces[i].isColor(WHITE))  {
+            val copyPiece = pieces[i].copy()
+            this.pieces[i] = copyPiece
+            if (copyPiece.isColor(WHITE))  {
                 whitePieceCount++
-                this.whitePieces[i] = pieces[i]
+                this.whitePieces[i] = copyPiece
             }
-            if (pieces[i].isColor(BLACK)) {
+            if (copyPiece.isColor(BLACK)) {
                 blackPieceCount++
-                this.blackPieces[i] = pieces[i]
+                this.blackPieces[i] = copyPiece
             }
         }
+    }
+
+    fun deepCopy(): Board {
+        return Board(enpassantSquare, whiteKingPosition, blackKingPosition, pieces, lastMove, rookDestinationHolder )
     }
 
     /**
      * Initializes this board's bit boards.
      */
     fun loadBoard(fenString: String) {
+        clearBoard()
         val digestibleBoard = simplifyFenBoard(fenString)
         for (square in 0.until(BOARD_SIZE)) {
             val piece = getPieceFromFen(digestibleBoard[square])
+            //if (piece.isPawn() && rowIs(square, ))
             pieces[square] = piece
             addToColorArray(piece,square)
             if (piece.isKing()) {
@@ -71,8 +82,8 @@ class Board {
         pieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
         whitePieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
         blackPieces = Array<Piece>(BOARD_SIZE) { EMPTY_SQUARE }
-
-       // piecePositions = pieces.withIndex().associate { (square, piece) -> (square to piece) }.toMutableMap()
+        whitePieceCount = 0
+        blackPieceCount = 0
         return true
     }
     /**
@@ -110,7 +121,7 @@ class Board {
             whitePieceCount++
         }
         else {
-            if (piece.isColor(BLACK)){
+            if (piece.isColor(BLACK)) {
                 blackPieces[position] = piece
                 blackPieceCount++
             }
@@ -156,7 +167,7 @@ class Board {
 
     fun makeMove(move: move) {
         makeMove(move.start(), move.end(), move.getPromotion())
-        println("This move is: ${move.getString()}")
+       // println("This move is: ${move.getString()}")
     }
 
     fun makeMove(origin: Int, endSquare: Int, promotionType: Int = QUEEN): Boolean {
@@ -237,13 +248,6 @@ class Board {
         return enpassantSquare
     }
 
-    fun tryMove(origin: Int, endSquare: Int) {
-
-        //moveGenerator.benchmarkMovegen()
-        makeMove(origin,endSquare)
-
-    } // move out of class
-
     /**
      * @return an array containing pieces of the specified team (all if left blank)
      */
@@ -263,22 +267,18 @@ class Board {
 
     fun getKingPosition(color: Int): Int? {
         return when (color) {
-            WHITE ->  whiteKingPostion
-            else ->   blackKingPostion
+            WHITE ->  whiteKingPosition
+            else ->   blackKingPosition
         }
     }
     private fun updateKingPosition(color: Int, square: Int) {
         when (color) {
-            WHITE -> whiteKingPostion = square
-            else -> blackKingPostion = square
+            WHITE -> whiteKingPosition = square
+            else -> blackKingPosition = square
         }
     }
 
     private fun isInBounds(square: Int): Boolean = square in 0.until(BOARD_SIZE)
-
-    fun deepCopy() {
-
-    }
 
     fun getBoardString(orientation: Int = 0): String {
         val board = StringBuilder()

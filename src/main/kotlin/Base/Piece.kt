@@ -70,7 +70,9 @@ value class Piece(val bitCode: UInt = 0u) {
     }
     private fun getProperty(selector: UInt, shift: Int): Int = ((bitCode and selector) shr shift).toInt()
 
-
+    fun copy(): Piece {
+        return Piece(bitCode)
+    }
 
 
     fun symbol(): String {

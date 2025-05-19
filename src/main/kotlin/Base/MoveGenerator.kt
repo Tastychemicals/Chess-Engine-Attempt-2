@@ -270,9 +270,6 @@ class MoveGenerator(board: Board) {
         sliderCheckSquares = getSliderCheckSquares(color)
         attackedKing = getCheckedKing()
 
-
-
-
         for (square in pieces.indices) {
             val piece = getPiece(square, color)
             if (piece.isEmpty()) continue
@@ -307,8 +304,8 @@ class MoveGenerator(board: Board) {
         //println(totalMoves)
         //}
         //println("rays casted on iteration: $raysCasted with a time of: ${start/1_000.0}micros")
-        println("Total moves found: $totalMoves")
-        println("Total moves in buffer: ${getMoveBufferFilledSpaces()}")
+        //println("Total moves found: $totalMoves")
+        //println("Total moves in buffer: ${getMoveBufferFilledSpaces()}")
         return moveBuffer
     }
 
@@ -732,12 +729,17 @@ class MoveGenerator(board: Board) {
 
         for (vector in pawnMoveInfo.getVectors()) {
             val newSquare = startSquare + (vector * getPawnDirection(piece.color))
-            if (!isInBounds(newSquare)) continue
+            if (!isInBounds(newSquare) || doesWrap(startSquare, newSquare)) continue
 
 
-            if ((isDiagonalVector(vector)
-                        && (((isValidPawnCapture( startSquare, newSquare, piece.color))
-                        || isEnpassantCapture(newSquare, piece.color)) || (illegalCaptures == ILLEGAL_CAPTURES && !doesWrap(startSquare, newSquare))))) {
+            if (
+                (isDiagonalVector(vector)
+                        && (
+                        ((isValidPawnCapture( startSquare, newSquare, piece.color))
+                        || isEnpassantCapture(newSquare, piece.color))
+                        || (illegalCaptures == ILLEGAL_CAPTURES && !doesWrap(startSquare, newSquare))
+
+                                ))) {
                 validSquares = validSquares or (1L shl newSquare)
             }
             if (!onlyCaptures) {

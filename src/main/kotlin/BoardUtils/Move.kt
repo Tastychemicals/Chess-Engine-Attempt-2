@@ -61,6 +61,7 @@ private const val PROMOTION_TYPE_FLAG = 0b111 shl PROMOTION_TYPE_BIT// 0b1110000
 
     fun move.getPromotion(): Int = (this.flags() and PROMOTION_TYPE_FLAG) shr PROMOTION_TYPE_BIT
     fun move.getString(): String = getFlagNames().joinToString() + " From ${getSquareName(this.start())} to ${ getSquareName(this.end())}"
+    fun move.literal(): String = "${getSquareName(this.start())}${getSquareName(this.end())}"
 
     fun move.isCapture (): Boolean = this.flags() and CAPTURE_FLAG != 0
     fun move.isCastle (): Boolean = this.flags() and CASTLE_FLAG != 0

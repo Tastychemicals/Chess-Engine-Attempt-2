@@ -236,8 +236,8 @@ class Parser {
                 "turn" -> turnChanged = reference.changeTurn(color)
                 "orient" ->  orientationChanged = visualizer.setNewOrientation(1 - color)
                 "squares" -> squareNumsShowing = visualizer.setShowingSquares()
-                "new" ->   { newGameStarted = true ; reference.prepareToBegin() }
-                "l" -> if (fen != NO_PARAM.toString()) reference.prepareToBegin(fen)
+                "new" ->   { newGameStarted = true ; reference.prepareToBegin() ; reference.begin() }
+                "l" ->  {if (fen != NO_PARAM.toString()) reference.prepareToBegin(fen) ; reference.begin() }
                 "s" -> when (fen) {
                     else -> loadPinsPosition1()
                 }
